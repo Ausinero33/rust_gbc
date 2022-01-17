@@ -24,6 +24,11 @@ const BC: usize = 3;
 const DE: usize = 5;
 const HL: usize = 7;
 
+// Instruccion "vacia"
+pub fn error(cpu: &mut CPU) {
+    println!("Instrucción no válida.");
+}
+
 // TODO u8 LOAD/STORE/MOVE
 fn reg_to_reg(cpu: &mut CPU, reg_dst: usize, reg_src: usize) {
     cpu.registers[reg_dst] = cpu.registers[reg_src];
@@ -544,7 +549,7 @@ pub fn push_af(cpu: &mut CPU) {
 
 // TODO CONTROL/BR
 pub fn nop(cpu: &mut CPU) {
-    println!("NOP");
+    cpu.cycles += 4;
 }
 
 // TODO CONTROL/MISC
