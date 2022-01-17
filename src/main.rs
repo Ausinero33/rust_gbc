@@ -1,3 +1,11 @@
+mod hardware;
+
+use hardware::cpu::CPU;
+
 fn main() {
-    println!("Hello, world!");
+    let mut cpu = CPU::new();
+
+    loop {
+        cpu.cycle();
+    }
 }
