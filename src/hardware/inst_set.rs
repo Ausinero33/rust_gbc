@@ -1,5 +1,7 @@
 use crate::hardware::cpu::CPU;
 
+use super::cpu;
+
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
@@ -551,7 +553,7 @@ pub fn push_af(cpu: &mut CPU) {
     push_regx(cpu, AF);
 }
 
-// TODO u8 ALU
+// u8 ALU
 
 fn check_half_carry(op1: u8, op2: u8) -> bool {
     op1 & 0x0F + op2 & 0x0F > 0x0F
@@ -886,6 +888,276 @@ pub fn sbc_a_hlind(cpu: &mut CPU) {
 
 pub fn sbc_a_a(cpu: &mut CPU) {
     sbc_a_reg(cpu, A);
+}
+
+fn and_a_reg(cpu: &mut CPU, reg_src: usize) {
+    cpu.registers[A] &= cpu.registers[reg_src];
+    set_flags(cpu, N_FLAG | C_FLAG, false);
+    set_flags(cpu, H_FLAG, true);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
+
+pub fn and_a_b(cpu: &mut CPU) {
+    and_a_reg(cpu, B);
+}
+
+pub fn and_a_c(cpu: &mut CPU) {
+    and_a_reg(cpu, C);
+}
+
+pub fn and_a_d(cpu: &mut CPU) {
+    and_a_reg(cpu, D);
+}
+
+pub fn and_a_e(cpu: &mut CPU) {
+    and_a_reg(cpu, E);
+}
+
+pub fn and_a_h(cpu: &mut CPU) {
+    and_a_reg(cpu, H);
+}
+
+pub fn and_a_l(cpu: &mut CPU) {
+    and_a_reg(cpu, L);
+}
+
+pub fn and_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 + 0x100;
+    let val = cpu.mem.read(dir as usize);
+    cpu.registers[A] &= val;
+    set_flags(cpu, N_FLAG | C_FLAG, false);
+    set_flags(cpu, H_FLAG, true);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn and_a_a(cpu: &mut CPU) {
+    and_a_reg(cpu, A);
+}
+
+fn xor_a_reg(cpu: &mut CPU, reg_src: usize) {
+    cpu.registers[A] ^= cpu.registers[reg_src];
+    set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
+
+pub fn xor_a_b(cpu: &mut CPU) {
+    xor_a_reg(cpu, B);
+}
+
+pub fn xor_a_c(cpu: &mut CPU) {
+    xor_a_reg(cpu, C);
+}
+
+pub fn xor_a_d(cpu: &mut CPU) {
+    xor_a_reg(cpu, D);
+}
+
+pub fn xor_a_e(cpu: &mut CPU) {
+    xor_a_reg(cpu, E);
+}
+
+pub fn xor_a_h(cpu: &mut CPU) {
+    xor_a_reg(cpu, H);
+}
+
+pub fn xor_a_l(cpu: &mut CPU) {
+    xor_a_reg(cpu, L);
+}
+
+pub fn xor_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 + 0x100;
+    let val = cpu.mem.read(dir as usize);
+    cpu.registers[A] ^= val;
+    set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn xor_a_a(cpu: &mut CPU) {
+    xor_a_reg(cpu, A);
+}
+
+fn or_a_reg(cpu: &mut CPU, reg_src: usize) {
+    cpu.registers[A] |= cpu.registers[reg_src];
+    set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
+
+pub fn or_a_b(cpu: &mut CPU) {
+    or_a_reg(cpu, B);
+}
+
+pub fn or_a_c(cpu: &mut CPU) {
+    or_a_reg(cpu, C);
+}
+
+pub fn or_a_d(cpu: &mut CPU) {
+    or_a_reg(cpu, D);
+}
+
+pub fn or_a_e(cpu: &mut CPU) {
+    or_a_reg(cpu, E);
+}
+
+pub fn or_a_h(cpu: &mut CPU) {
+    or_a_reg(cpu, H);
+}
+
+pub fn or_a_l(cpu: &mut CPU) {
+    or_a_reg(cpu, L);
+}
+
+pub fn or_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 + 0x100;
+    let val = cpu.mem.read(dir as usize);
+    cpu.registers[A] |= val;
+    set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn or_a_a(cpu: &mut CPU) {
+    or_a_reg(cpu, A);
+}
+
+fn cp_a_reg(cpu: &mut CPU, reg_src: usize) {
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == cpu.registers[reg_src]);
+    set_flags(cpu, N_FLAG, true);
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], cpu.registers[reg_src]));
+    set_flags(cpu, C_FLAG, cpu.registers[A] < cpu.registers[reg_src]);
+    cpu.cycles += 4;
+}
+
+pub fn cp_a_b(cpu: &mut CPU) {
+    cp_a_reg(cpu, B);
+}
+
+pub fn cp_a_c(cpu: &mut CPU) {
+    cp_a_reg(cpu, C);
+}
+
+pub fn cp_a_d(cpu: &mut CPU) {
+    cp_a_reg(cpu, D);
+}
+
+pub fn cp_a_e(cpu: &mut CPU) {
+    cp_a_reg(cpu, E);
+}
+
+pub fn cp_a_h(cpu: &mut CPU) {
+    cp_a_reg(cpu, H);
+}
+
+pub fn cp_a_l(cpu: &mut CPU) {
+    cp_a_reg(cpu, L);
+}
+
+pub fn cp_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 + 0x100;
+    let val = cpu.mem.read(dir as usize);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == val);
+    set_flags(cpu, N_FLAG, true);
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], val));
+    set_flags(cpu, C_FLAG, cpu.registers[A] < val);
+
+    cpu.cycles += 8;
+}
+
+pub fn cp_a_a(cpu: &mut CPU) {
+    cp_a_reg(cpu, A);
+}
+
+pub fn add_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    set_flags(cpu, H_FLAG, check_half_carry(cpu.registers[A], val));
+    let x = cpu.registers[A].overflowing_add(val);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 8;
+}
+
+pub fn adc_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    let cy = get_carry(cpu);
+    set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], val, cy));
+    let x = cpu.registers[A].overflowing_add(val + cy);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 8;
+}
+
+pub fn sub_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], val));
+    let x = cpu.registers[A].overflowing_sub(val);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, true);
+    cpu.cycles += 8;
+}
+
+pub fn sbc_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    let cy = get_carry(cpu);
+    set_flags(cpu, H_FLAG, check_half_borrow_cy(cpu.registers[A], val, cy));
+    let x = cpu.registers[A].overflowing_sub(val + cy);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, true);
+    cpu.cycles += 8;
+}
+
+pub fn and_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    cpu.registers[A] &= val;
+    set_flags(cpu, N_FLAG | C_FLAG, false);
+    set_flags(cpu, H_FLAG, true);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn xor_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    cpu.registers[A] ^= val;
+    set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn or_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    cpu.registers[A] |= val;
+    set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn cp_a_u8(cpu: &mut CPU) {
+    let val = cpu.fetch();
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == val);
+    set_flags(cpu, N_FLAG, true);
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], val));
+    set_flags(cpu, C_FLAG, cpu.registers[A] < val);
+    cpu.cycles += 8;
 }
 
 // TODO u16 ALU
