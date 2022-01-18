@@ -1,7 +1,5 @@
 use crate::hardware::cpu::CPU;
 
-use super::cpu;
-
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
@@ -25,11 +23,23 @@ const DE: usize = 5;
 const HL: usize = 7;
 
 // Instruccion "vacia"
-pub fn error(cpu: &mut CPU) {
+pub fn error(_cpu: &mut CPU) {
     println!("Instrucción no válida.");
 }
 
-// TODO u8 LOAD/STORE/MOVE
+fn set_flags(cpu: &mut CPU, flag: u8, cond: bool) {
+    if cond {
+        cpu.registers[F] |= flag;
+    } else {
+        cpu.registers[F] &= !flag;
+    }
+}
+
+fn get_carry(cpu: &mut CPU) -> u8 {
+    cpu.registers[F] & C_FLAG >> 4
+}
+
+// u8 LOAD/STORE/MOVE
 fn reg_to_reg(cpu: &mut CPU, reg_dst: usize, reg_src: usize) {
     cpu.registers[reg_dst] = cpu.registers[reg_src];
     cpu.cycles += 4;
@@ -542,6 +552,235 @@ pub fn push_af(cpu: &mut CPU) {
 }
 
 // TODO u8 ALU
+
+fn check_half_carry(op1: u8, op2: u8) -> bool {
+    op1 & 0x0F + op2 & 0x0F > 0x0F
+}
+
+fn check_half_borrow(op1: u8, op2: u8) -> bool {
+    (op1 & 0xf).wrapping_sub(op2 & 0xf) & 0x10 == 0x10
+}
+
+fn inc_reg(cpu: &mut CPU, reg: usize) {
+    set_flags(cpu, H_FLAG, check_half_carry(cpu.registers[reg], 1));
+    set_flags(cpu, N_FLAG, false);
+    cpu.registers[reg] = cpu.registers[reg].overflowing_add(1).0;
+    set_flags(cpu, Z_FLAG, cpu.registers[reg] == 0);
+    cpu.cycles += 4;
+}
+
+fn dec_reg(cpu: &mut CPU, reg: usize) {
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[reg], 1));
+    set_flags(cpu, N_FLAG, true);
+    cpu.registers[reg] = cpu.registers[reg].overflowing_sub(1).0;
+    set_flags(cpu, Z_FLAG, cpu.registers[reg] == 0);
+    cpu.cycles += 4;
+}
+
+pub fn inc_b(cpu: &mut CPU) {
+    inc_reg(cpu, B);
+}
+
+pub fn inc_c(cpu: &mut CPU) {
+    inc_reg(cpu, C);
+}
+
+pub fn inc_d(cpu: &mut CPU) {
+    inc_reg(cpu, D);
+}
+
+pub fn inc_e(cpu: &mut CPU) {
+    inc_reg(cpu, E);
+}
+
+pub fn inc_h(cpu: &mut CPU) {
+    inc_reg(cpu, H);
+}
+
+pub fn inc_l(cpu: &mut CPU) {
+    inc_reg(cpu, L);
+}
+
+pub fn inc_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    let mut val = cpu.mem.read(dir as usize);
+    set_flags(cpu, H_FLAG, check_half_carry(val, 1));
+    set_flags(cpu, N_FLAG, false);
+    val = val.overflowing_add(1).0;
+    set_flags(cpu, Z_FLAG, val == 0);
+    cpu.mem.write(dir as usize, val);
+    cpu.cycles += 12;
+}
+
+pub fn inc_a(cpu: &mut CPU) {
+    inc_reg(cpu, A);
+}
+
+pub fn dec_b(cpu: &mut CPU) {
+    dec_reg(cpu, B);
+}
+
+pub fn dec_c(cpu: &mut CPU) {
+    dec_reg(cpu, C);
+}
+
+pub fn dec_d(cpu: &mut CPU) {
+    dec_reg(cpu, D);
+}
+
+pub fn dec_e(cpu: &mut CPU) {
+    dec_reg(cpu, E);
+}
+
+pub fn dec_h(cpu: &mut CPU) {
+    dec_reg(cpu, H);
+}
+
+pub fn dec_l(cpu: &mut CPU) {
+    dec_reg(cpu, L);
+}
+
+pub fn dec_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    let mut val = cpu.mem.read(dir as usize);
+    set_flags(cpu, H_FLAG, check_half_borrow(val, 1));
+    set_flags(cpu, N_FLAG, true);
+    val = val.overflowing_sub(1).0;
+    set_flags(cpu, Z_FLAG, val == 0);
+    cpu.mem.write(dir as usize, val);
+    cpu.cycles += 12;
+}
+
+pub fn dec_a(cpu: &mut CPU) {
+    dec_reg(cpu, A);
+}
+
+pub fn daa(cpu: &mut CPU) {
+    // TODO daa
+}
+
+pub fn scf(cpu: &mut CPU) {
+    set_flags(cpu, C_FLAG, true);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+}
+
+pub fn cpl(cpu: &mut CPU) {
+    cpu.registers[A] ^= cpu.registers[F];
+    set_flags(cpu, N_FLAG | H_FLAG, true);
+    cpu.cycles += 4;
+}
+
+pub fn ccf(cpu: &mut CPU) {
+    let cond = get_carry(cpu) ^ 1 != 0;
+    set_flags(cpu, C_FLAG, cond);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+}
+
+fn add_a_reg(cpu: &mut CPU, reg_src: usize) {
+    set_flags(cpu, H_FLAG, check_half_carry(cpu.registers[A], cpu.registers[reg_src]));
+    let x = cpu.registers[A].overflowing_add(cpu.registers[reg_src]);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 4;
+}
+
+pub fn add_a_b(cpu: &mut CPU) {
+    add_a_reg(cpu, B);
+}
+
+pub fn add_a_c(cpu: &mut CPU) {
+    add_a_reg(cpu, C);
+}
+
+pub fn add_a_d(cpu: &mut CPU) {
+    add_a_reg(cpu, D);
+}
+
+pub fn add_a_e(cpu: &mut CPU) {
+    add_a_reg(cpu, E);
+}
+
+pub fn add_a_h(cpu: &mut CPU) {
+    add_a_reg(cpu, H);
+}
+
+pub fn add_a_l(cpu: &mut CPU) {
+    add_a_reg(cpu, L);
+}
+
+pub fn add_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.fetch() as u16 + cpu.fetch() as u16 * 0x100;
+    let val = cpu.mem.read(dir as usize);
+    set_flags(cpu, H_FLAG, check_half_carry(cpu.registers[A], val));
+    let x = cpu.registers[A].overflowing_add(val);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 8;
+}
+
+pub fn add_a_a(cpu: &mut CPU) {
+    add_a_reg(cpu, A);
+}
+
+fn check_half_carry_cy(op1: u8, op2: u8, cy: u8) -> bool {
+    op1 & 0x0F + op2 & 0x0F + cy > 0x0F
+}
+
+fn adc_a_reg(cpu: &mut CPU, reg_src: usize) {
+    let cy = get_carry(cpu);
+    set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], cpu.registers[reg_src], cy));
+    let x = cpu.registers[A].overflowing_add(cpu.registers[reg_src] + cy);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 4;
+}
+
+pub fn adc_a_b(cpu: &mut CPU) {
+    adc_a_reg(cpu, B);
+}
+
+pub fn adc_a_c(cpu: &mut CPU) {
+    adc_a_reg(cpu, C);
+}
+
+pub fn adc_a_d(cpu: &mut CPU) {
+    adc_a_reg(cpu, D);
+}
+
+pub fn adc_a_e(cpu: &mut CPU) {
+    adc_a_reg(cpu, E);
+}
+
+pub fn adc_a_h(cpu: &mut CPU) {
+    adc_a_reg(cpu, H);
+}
+
+pub fn adc_a_l(cpu: &mut CPU) {
+    adc_a_reg(cpu, L);
+}
+
+pub fn adc_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.fetch() as u16 + cpu.fetch() as u16 * 0x100;
+    let val = cpu.mem.read(dir as usize);
+    let cy = get_carry(cpu);
+    set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], val, cy));
+    let x = cpu.registers[A].overflowing_add(val + cy);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 8;
+}
+
+pub fn adc_a_a(cpu: &mut CPU) {
+    adc_a_reg(cpu, A);
+}
 
 // TODO u16 ALU
 
