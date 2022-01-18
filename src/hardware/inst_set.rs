@@ -782,6 +782,112 @@ pub fn adc_a_a(cpu: &mut CPU) {
     adc_a_reg(cpu, A);
 }
 
+fn sub_a_reg(cpu: &mut CPU, reg_src: usize) {
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], cpu.registers[reg_src]));
+    let x = cpu.registers[A].overflowing_sub(cpu.registers[reg_src]);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, true);
+    cpu.cycles += 4;
+}
+
+pub fn sub_a_b(cpu: &mut CPU) {
+    sub_a_reg(cpu, B);
+}
+
+pub fn sub_a_c(cpu: &mut CPU) {
+    sub_a_reg(cpu, C);
+}
+
+pub fn sub_a_d(cpu: &mut CPU) {
+    sub_a_reg(cpu, D);
+}
+
+pub fn sub_a_e(cpu: &mut CPU) {
+    sub_a_reg(cpu, E);
+}
+
+pub fn sub_a_h(cpu: &mut CPU) {
+    sub_a_reg(cpu, H);
+}
+
+pub fn sub_a_l(cpu: &mut CPU) {
+    sub_a_reg(cpu, L);
+}
+
+pub fn sub_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.fetch() as u16 + cpu.fetch() as u16 * 0x100;
+    let val = cpu.mem.read(dir as usize);
+    set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], val));
+    let x = cpu.registers[A].overflowing_sub(val);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 8;
+}
+
+pub fn sub_a_a(cpu: &mut CPU) {
+    add_a_reg(cpu, A);
+}
+
+fn check_half_borrow_cy(op1: u8, op2: u8, cy: u8) -> bool {
+    (op1 & 0xf).wrapping_sub(op2 & 0xf).wrapping_sub(cy) & 0x10 == 0x10
+}
+
+fn sbc_a_reg(cpu: &mut CPU, reg_src: usize) {
+    let cy = get_carry(cpu);
+    set_flags(cpu, H_FLAG, check_half_borrow_cy(cpu.registers[A], cpu.registers[reg_src], cy));
+    let x = cpu.registers[A].overflowing_sub(cpu.registers[reg_src] + cy);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, true);
+    cpu.cycles += 4;
+}
+
+pub fn sbc_a_b(cpu: &mut CPU) {
+    sbc_a_reg(cpu, B);
+}
+
+pub fn sbc_a_c(cpu: &mut CPU) {
+    sbc_a_reg(cpu, C);
+}
+
+pub fn sbc_a_d(cpu: &mut CPU) {
+    sbc_a_reg(cpu, D);
+}
+
+pub fn sbc_a_e(cpu: &mut CPU) {
+    sbc_a_reg(cpu, E);
+}
+
+pub fn sbc_a_h(cpu: &mut CPU) {
+    sbc_a_reg(cpu, H);
+}
+
+pub fn sbc_a_l(cpu: &mut CPU) {
+    sbc_a_reg(cpu, L);
+}
+
+pub fn sbc_a_hlind(cpu: &mut CPU) {
+    let dir = cpu.fetch() as u16 + cpu.fetch() as u16 * 0x100;
+    let val = cpu.mem.read(dir as usize);
+    let cy = get_carry(cpu);
+    set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], val, cy));
+    let x = cpu.registers[A].overflowing_add(val + cy);
+    cpu.registers[A] = x.0;
+    set_flags(cpu, Z_FLAG, x.0 == 0);
+    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, N_FLAG, false);
+    cpu.cycles += 8;
+}
+
+pub fn sbc_a_a(cpu: &mut CPU) {
+    sbc_a_reg(cpu, A);
+}
+
 // TODO u16 ALU
 
 // TODO CB u8
