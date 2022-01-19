@@ -1,7 +1,5 @@
 use crate::hardware::cpu::CPU;
 
-use super::cpu;
-
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
