@@ -1,5 +1,7 @@
 use crate::hardware::cpu::CPU;
 
+use super::cpu;
+
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
@@ -1290,7 +1292,7 @@ pub fn ld_hl_sp_i8(cpu: &mut CPU) {
     cpu.cycles += 12;
 }
 
-// TODO x8/RSB
+// x8/RSB
 
 pub fn rlca(cpu: &mut CPU) {
     let mut rot = cpu.registers[A];
@@ -1302,7 +1304,7 @@ pub fn rlca(cpu: &mut CPU) {
     rot |= carry >> 7;
     cpu.registers[A] = rot;
 
-    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+    set_flags(cpu, Z_FLAG | N_FLAG | H_FLAG, false);
 
     cpu.cycles += 4;
 }
@@ -1318,7 +1320,7 @@ pub fn rla(cpu: &mut CPU) {
     rot |= prev_carry >> 4;
     cpu.registers[A] = rot;
 
-    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+    set_flags(cpu, Z_FLAG | N_FLAG | H_FLAG, false);
 
     cpu.cycles += 4;
 }
@@ -1333,7 +1335,7 @@ pub fn rrca(cpu: &mut CPU) {
     rot |= carry << 7;
     cpu.registers[A] = rot;
 
-    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+    set_flags(cpu, Z_FLAG | N_FLAG | H_FLAG, false);
 
     cpu.cycles += 4;
 }
@@ -1349,9 +1351,1275 @@ pub fn rra(cpu: &mut CPU) {
     rot |= prev_carry << 3;
     cpu.registers[A] = rot;
 
-    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+    set_flags(cpu, Z_FLAG | N_FLAG | H_FLAG, false);
 
     cpu.cycles += 4;
+}
+
+fn rlc_reg(cpu: &mut CPU, reg: usize) {
+    let mut rot = cpu.registers[reg];
+    let carry = rot & 0b10000000;
+
+    set_flags(cpu, C_FLAG, carry == 0b10000000);
+
+    rot <<= 1;
+    rot |= carry >> 7;
+    cpu.registers[reg] = rot;
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, cpu.registers[reg] == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn rlc_b(cpu: &mut CPU) {
+    rlc_reg(cpu, B);
+}
+
+pub fn rlc_c(cpu: &mut CPU) {
+    rlc_reg(cpu, C);
+}
+
+pub fn rlc_d(cpu: &mut CPU) {
+    rlc_reg(cpu, D);
+}
+
+pub fn rlc_e(cpu: &mut CPU) {
+    rlc_reg(cpu, E);
+}
+
+pub fn rlc_h(cpu: &mut CPU) {
+    rlc_reg(cpu, H);
+}
+
+pub fn rlc_l(cpu: &mut CPU) {
+    rlc_reg(cpu, L);
+}
+
+pub fn rlc_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    let mut rot = cpu.mem.read(dir as usize);
+    let carry = rot & 0b10000000;
+
+    set_flags(cpu, C_FLAG, carry == 0b10000000);
+
+    rot <<= 1;
+    rot |= carry >> 7;
+    cpu.mem.write(dir as usize, rot);
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 16;
+}
+
+pub fn rlc_a(cpu: &mut CPU) {
+    rlc_reg(cpu, A);
+}
+
+fn rrc_reg(cpu: &mut CPU, reg: usize) {
+    let mut rot = cpu.registers[reg];
+    let carry = rot & 1;
+
+    set_flags(cpu, C_FLAG, carry == 0b00000001);
+
+    rot >>= 1;
+    rot |= carry << 7;
+    cpu.registers[reg] = rot;
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn rrc_b(cpu: &mut CPU) {
+    rrc_reg(cpu, B);
+}
+
+pub fn rrc_c(cpu: &mut CPU) {
+    rrc_reg(cpu, C);
+}
+
+pub fn rrc_d(cpu: &mut CPU) {
+    rrc_reg(cpu, D);
+}
+
+pub fn rrc_e(cpu: &mut CPU) {
+    rrc_reg(cpu, E);
+}
+
+pub fn rrc_h(cpu: &mut CPU) {
+    rrc_reg(cpu, H);
+}
+
+pub fn rrc_l(cpu: &mut CPU) {
+    rrc_reg(cpu, L);
+}
+
+pub fn rrc_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    let mut rot = cpu.mem.read(dir as usize);
+    let carry = rot & 1;
+
+    set_flags(cpu, C_FLAG, carry == 0b00000001);
+
+    rot >>= 1;
+    rot |= carry << 7;
+    cpu.mem.write(dir as usize, rot);
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 16;
+}
+
+pub fn rrc_a(cpu: &mut CPU) {
+    rrc_reg(cpu, A);
+}
+
+fn rl_reg(cpu: &mut CPU, reg: usize) {
+    let mut rot = cpu.registers[reg];
+    let carry = rot & 0b10000000;
+    let prev_carry = cpu.registers[F] & C_FLAG;
+
+    set_flags(cpu, C_FLAG, carry == 0b10000000);
+
+    rot <<= 1;
+    rot |= prev_carry >> 4;
+    cpu.registers[reg] = rot;
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn rl_b(cpu: &mut CPU) {
+    rl_reg(cpu, B);
+}
+
+pub fn rl_c(cpu: &mut CPU) {
+    rl_reg(cpu, C);
+}
+
+pub fn rl_d(cpu: &mut CPU) {
+    rl_reg(cpu, D);
+}
+
+pub fn rl_e(cpu: &mut CPU) {
+    rl_reg(cpu, E);
+}
+
+pub fn rl_h(cpu: &mut CPU) {
+    rl_reg(cpu, H);
+}
+
+pub fn rl_l(cpu: &mut CPU) {
+    rl_reg(cpu, L);
+}
+
+pub fn rl_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    let mut rot = cpu.mem.read(dir as usize);
+    let carry = rot & 0b10000000;
+    let prev_carry = cpu.registers[F] & C_FLAG;
+
+    set_flags(cpu, C_FLAG, carry == 0b10000000);
+
+    rot <<= 1;
+    rot |= prev_carry >> 4;
+    cpu.mem.write(dir as usize, rot);
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 16;
+}
+
+pub fn rl_a(cpu: &mut CPU) {
+    rl_reg(cpu, A);
+}
+
+fn rr_reg(cpu: &mut CPU, reg: usize) {
+    let mut rot = cpu.registers[reg];
+    let carry = rot & 0b00000001;
+    let prev_carry = cpu.registers[F] & C_FLAG;
+
+    set_flags(cpu, C_FLAG, carry == 0b00000001);
+
+    rot >>= 1;
+    rot |= prev_carry << 3;
+    cpu.registers[reg] = rot;
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 8;
+}
+
+pub fn rr_b(cpu: &mut CPU) {
+    rr_reg(cpu, B);
+}
+
+pub fn rr_c(cpu: &mut CPU) {
+    rr_reg(cpu, C);
+}
+
+pub fn rr_d(cpu: &mut CPU) {
+    rr_reg(cpu, D);
+}
+
+pub fn rr_e(cpu: &mut CPU) {
+    rr_reg(cpu, E);
+}
+
+pub fn rr_h(cpu: &mut CPU) {
+    rr_reg(cpu, H);
+}
+
+pub fn rr_l(cpu: &mut CPU) {
+    rr_reg(cpu, L);
+}
+
+pub fn rr_hlind(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    let mut rot = cpu.mem.read(dir as usize);
+    let carry = rot & 0b00000001;
+    let prev_carry = cpu.registers[F] & C_FLAG;
+
+    set_flags(cpu, C_FLAG, carry == 0b00000001);
+
+    rot >>= 1;
+    rot |= prev_carry << 3;
+    cpu.mem.write(dir as usize, rot);
+    cpu.registers[A] = rot;
+
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+    set_flags(cpu, Z_FLAG, rot == 0);
+
+    cpu.cycles += 16;
+}
+
+pub fn rr_a(cpu: &mut CPU) {
+    rr_reg(cpu, A);
+}
+
+fn sla_reg(cpu: &mut CPU, reg: usize) {
+    let rot = cpu.registers[reg].overflowing_shl(1);
+    cpu.registers[reg] = rot.0;
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 8;
+}
+
+pub fn sla_b(cpu: &mut CPU) {
+    sla_reg(cpu, B);
+}
+
+pub fn sla_c(cpu: &mut CPU) {
+    sla_reg(cpu, C);
+}
+
+pub fn sla_d(cpu: &mut CPU) {
+    sla_reg(cpu, D);
+}
+
+pub fn sla_e(cpu: &mut CPU) {
+    sla_reg(cpu, E);
+}
+
+pub fn sla_h(cpu: &mut CPU) {
+    sla_reg(cpu, H);
+}
+
+pub fn sla_l(cpu: &mut CPU) {
+    sla_reg(cpu, L);
+}
+
+pub fn sla_hlind(cpu: &mut CPU) {
+    let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
+    let rot = cpu.mem.read(dir).overflowing_shl(1);
+    cpu.mem.write(dir, rot.0);
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 16;
+}
+
+pub fn sla_a(cpu: &mut CPU) {
+    sla_reg(cpu, A);
+}
+
+fn sra_reg(cpu: &mut CPU, reg: usize) {
+    let rot = cpu.registers[reg].overflowing_shr(1);
+    let msb = cpu.registers[reg] & 0b1000000; 
+    cpu.registers[reg] = rot.0 | msb;
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 8;
+}
+
+pub fn sra_b(cpu: &mut CPU) {
+    sra_reg(cpu, B);
+}
+
+pub fn sra_c(cpu: &mut CPU) {
+    sra_reg(cpu, C);
+}
+
+pub fn sra_d(cpu: &mut CPU) {
+    sra_reg(cpu, D);
+}
+
+pub fn sra_e(cpu: &mut CPU) {
+    sra_reg(cpu, E);
+}
+
+pub fn sra_h(cpu: &mut CPU) {
+    sra_reg(cpu, H);
+}
+
+pub fn sra_l(cpu: &mut CPU) {
+    sra_reg(cpu, L);
+}
+
+pub fn sra_hlind(cpu: &mut CPU) {
+    let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
+    let rot = cpu.mem.read(dir).overflowing_shr(1);
+    let msb = cpu.mem.read(dir) & 0b1000000; 
+    cpu.mem.write(dir, rot.0 | msb);
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 16;
+}
+
+pub fn sra_a(cpu: &mut CPU) {
+    sra_reg(cpu, A);
+}
+
+fn swap_reg(cpu: &mut CPU, reg: usize) {
+    let upper = cpu.registers[reg] & 0xF0;
+    let lower = cpu.registers[reg] & 0x0F;
+    cpu.registers[reg] = (upper >> 4) + (lower << 4);
+
+    set_flags(cpu, Z_FLAG, cpu.registers[reg] == 0);
+    set_flags(cpu, N_FLAG | H_FLAG | C_FLAG, false);
+
+    cpu.cycles += 8;
+}
+
+pub fn swap_b(cpu: &mut CPU) {
+    swap_reg(cpu, B);
+}
+
+pub fn swap_c(cpu: &mut CPU) {
+    swap_reg(cpu, C);
+}
+
+pub fn swap_d(cpu: &mut CPU) {
+    swap_reg(cpu, D);
+}
+
+pub fn swap_e(cpu: &mut CPU) {
+    swap_reg(cpu, E);
+}
+
+pub fn swap_h(cpu: &mut CPU) {
+    swap_reg(cpu, H);
+}
+
+pub fn swap_l(cpu: &mut CPU) {
+    swap_reg(cpu, L);
+}
+
+pub fn swap_hlind(cpu: &mut CPU) {
+    let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
+    let rot = cpu.mem.read(dir).overflowing_shr(1);
+    let msb = cpu.mem.read(dir) & 0b1000000; 
+    cpu.mem.write(dir, rot.0 | msb);
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 16;
+}
+
+pub fn swap_a(cpu: &mut CPU) {
+    swap_reg(cpu, A);
+}
+
+fn srl_reg(cpu: &mut CPU, reg: usize) {
+    let rot = cpu.registers[reg].overflowing_shr(1);
+    cpu.registers[reg] = rot.0;
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 8;
+}
+
+pub fn srl_b(cpu: &mut CPU) {
+    srl_reg(cpu, B);
+}
+
+pub fn srl_c(cpu: &mut CPU) {
+    srl_reg(cpu, C);
+}
+
+pub fn srl_d(cpu: &mut CPU) {
+    srl_reg(cpu, D);
+}
+
+pub fn srl_e(cpu: &mut CPU) {
+    srl_reg(cpu, E);
+}
+
+pub fn srl_h(cpu: &mut CPU) {
+    srl_reg(cpu, H);
+}
+
+pub fn srl_l(cpu: &mut CPU) {
+    srl_reg(cpu, L);
+}
+
+pub fn srl_hlind(cpu: &mut CPU) {
+    let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
+    let rot = cpu.mem.read(dir).overflowing_shr(1);
+    cpu.mem.write(dir, rot.0);
+
+    set_flags(cpu, C_FLAG, rot.1);
+    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.cycles += 16;
+}
+
+pub fn srl_a(cpu: &mut CPU) {
+    srl_reg(cpu, A);
+}
+
+fn bit_pos_reg(cpu: &mut CPU, reg: usize, b: u8) {
+    set_flags(cpu, Z_FLAG, cpu.registers[reg] & b == 0);
+    set_flags(cpu, N_FLAG, false);
+    set_flags(cpu, H_FLAG, true);
+
+    cpu.cycles += 8;
+}
+
+fn bit_pos_hlind(cpu: &mut CPU, b: u8) {
+    let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
+
+    set_flags(cpu, Z_FLAG, cpu.mem.read(dir) & b == 0);
+    set_flags(cpu, N_FLAG, false);
+    set_flags(cpu, H_FLAG, true);
+    
+    cpu.cycles += 8;
+}
+
+pub fn bit_0_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b00000001);
+}
+
+pub fn bit_0_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b00000001);
+}
+
+pub fn bit_0_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b00000001);
+}
+
+pub fn bit_0_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b00000001);
+}
+
+pub fn bit_0_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b00000001);
+}
+
+pub fn bit_0_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b00000001);
+}
+
+pub fn bit_0_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b00000001);
+}
+
+pub fn bit_0_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b00000001);
+}
+
+pub fn bit_1_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b00000010);
+}
+
+pub fn bit_1_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b00000010);
+}
+
+pub fn bit_1_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b00000010);
+}
+
+pub fn bit_1_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b00000010);
+}
+
+pub fn bit_1_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b00000010);
+}
+
+pub fn bit_1_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b00000010);
+}
+
+pub fn bit_1_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b00000010);
+}
+
+pub fn bit_1_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b00000010);
+}
+
+pub fn bit_2_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b00000100);
+}
+
+pub fn bit_2_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b00000100);
+}
+
+pub fn bit_2_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b00000100);
+}
+
+pub fn bit_2_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b00000100);
+}
+
+pub fn bit_2_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b00000100);
+}
+
+pub fn bit_2_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b00000100);
+}
+
+pub fn bit_2_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b00000100);
+}
+
+pub fn bit_2_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b00000100);
+}
+
+pub fn bit_3_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b00001000);
+}
+
+pub fn bit_3_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b00001000);
+}
+
+pub fn bit_3_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b00001000);
+}
+
+pub fn bit_3_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b00001000);
+}
+
+pub fn bit_3_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b00001000);
+}
+
+pub fn bit_3_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b00001000);
+}
+
+pub fn bit_3_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b00001000);
+}
+
+pub fn bit_3_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b00001000);
+}
+
+pub fn bit_4_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b00010000);
+}
+
+pub fn bit_4_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b00010000);
+}
+
+pub fn bit_4_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b00010000);
+}
+
+pub fn bit_4_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b00010000);
+}
+
+pub fn bit_4_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b00010000);
+}
+
+pub fn bit_4_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b00010000);
+}
+
+pub fn bit_4_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b00010000);
+}
+
+pub fn bit_4_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b00010000);
+}
+
+pub fn bit_5_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b00100000);
+}
+
+pub fn bit_5_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b00100000);
+}
+
+pub fn bit_5_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b00100000);
+}
+
+pub fn bit_5_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b00100000);
+}
+
+pub fn bit_5_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b00100000);
+}
+
+pub fn bit_5_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b00100000);
+}
+
+pub fn bit_5_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b00100000);
+}
+
+pub fn bit_5_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b00100000);
+}
+
+pub fn bit_6_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b01000000);
+}
+
+pub fn bit_6_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b01000000);
+}
+
+pub fn bit_6_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b01000000);
+}
+
+pub fn bit_6_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b01000000);
+}
+
+pub fn bit_6_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b01000000);
+}
+
+pub fn bit_6_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b01000000);
+}
+
+pub fn bit_6_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b01000000);
+}
+
+pub fn bit_6_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b01000000);
+}
+
+pub fn bit_7_b(cpu: &mut CPU) {
+    bit_pos_reg(cpu, B, 0b10000000);
+}
+
+pub fn bit_7_c(cpu: &mut CPU) {
+    bit_pos_reg(cpu, C, 0b10000000);
+}
+
+pub fn bit_7_d(cpu: &mut CPU) {
+    bit_pos_reg(cpu, D, 0b10000000);
+}
+
+pub fn bit_7_e(cpu: &mut CPU) {
+    bit_pos_reg(cpu, E, 0b10000000);
+}
+
+pub fn bit_7_h(cpu: &mut CPU) {
+    bit_pos_reg(cpu, H, 0b10000000);
+}
+
+pub fn bit_7_l(cpu: &mut CPU) {
+    bit_pos_reg(cpu, L, 0b10000000);
+}
+
+pub fn bit_7_hlind(cpu: &mut CPU) {
+    bit_pos_hlind(cpu, 0b10000000);
+}
+
+pub fn bit_7_a(cpu: &mut CPU) {
+    bit_pos_reg(cpu, A, 0b10000000);
+}
+
+fn res_pos_reg(cpu: &mut CPU, reg: usize, b: u8) {
+    cpu.registers[reg] &= b;
+    cpu.cycles += 8;
+}
+
+fn res_pos_hlind(cpu: &mut CPU, b: u8) {
+    let dir = (cpu.registers[L] as u16 * cpu.registers[H] as u16 * 0x100) as usize;
+    let val = cpu.mem.read(dir) & b;
+    cpu.mem.write(dir, val);
+    cpu.cycles += 16;
+}
+
+pub fn res_0_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b00000001);
+}
+
+pub fn res_0_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b00000001);
+}
+
+pub fn res_0_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b00000001);
+}
+
+pub fn res_0_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b00000001);
+}
+
+pub fn res_0_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b00000001);
+}
+
+pub fn res_0_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b00000001);
+}
+
+pub fn res_0_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b00000001);
+}
+
+pub fn res_0_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b00000001);
+}
+
+pub fn res_1_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b00000010);
+}
+
+pub fn res_1_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b00000010);
+}
+
+pub fn res_1_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b00000010);
+}
+
+pub fn res_1_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b00000010);
+}
+
+pub fn res_1_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b00000010);
+}
+
+pub fn res_1_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b00000010);
+}
+
+pub fn res_1_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b00000010);
+}
+
+pub fn res_1_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b00000010);
+}
+
+pub fn res_2_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b00000100);
+}
+
+pub fn res_2_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b00000100);
+}
+
+pub fn res_2_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b00000100);
+}
+
+pub fn res_2_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b00000100);
+}
+
+pub fn res_2_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b00000100);
+}
+
+pub fn res_2_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b00000100);
+}
+
+pub fn res_2_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b00000100);
+}
+
+pub fn res_2_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b00000100);
+}
+
+pub fn res_3_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b00001000);
+}
+
+pub fn res_3_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b00001000);
+}
+
+pub fn res_3_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b00001000);
+}
+
+pub fn res_3_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b00001000);
+}
+
+pub fn res_3_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b00001000);
+}
+
+pub fn res_3_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b00001000);
+}
+
+pub fn res_3_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b00001000);
+}
+
+pub fn res_3_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b00001000);
+}
+
+pub fn res_4_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b00010000);
+}
+
+pub fn res_4_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b00010000);
+}
+
+pub fn res_4_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b00010000);
+}
+
+pub fn res_4_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b00010000);
+}
+
+pub fn res_4_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b00010000);
+}
+
+pub fn res_4_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b00010000);
+}
+
+pub fn res_4_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b00010000);
+}
+
+pub fn res_4_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b00010000);
+}
+
+pub fn res_5_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b00100000);
+}
+
+pub fn res_5_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b00100000);
+}
+
+pub fn res_5_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b00100000);
+}
+
+pub fn res_5_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b00100000);
+}
+
+pub fn res_5_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b00100000);
+}
+
+pub fn res_5_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b00100000);
+}
+
+pub fn res_5_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b00100000);
+}
+
+pub fn res_5_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b00100000);
+}
+
+pub fn res_6_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b01000000);
+}
+
+pub fn res_6_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b01000000);
+}
+
+pub fn res_6_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b01000000);
+}
+
+pub fn res_6_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b01000000);
+}
+
+pub fn res_6_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b01000000);
+}
+
+pub fn res_6_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b01000000);
+}
+
+pub fn res_6_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b01000000);
+}
+
+pub fn res_6_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b01000000);
+}
+
+pub fn res_7_b(cpu: &mut CPU) {
+    res_pos_reg(cpu, B, 0b10000000);
+}
+
+pub fn res_7_c(cpu: &mut CPU) {
+    res_pos_reg(cpu, C, 0b10000000);
+}
+
+pub fn res_7_d(cpu: &mut CPU) {
+    res_pos_reg(cpu, D, 0b10000000);
+}
+
+pub fn res_7_e(cpu: &mut CPU) {
+    res_pos_reg(cpu, E, 0b10000000);
+}
+
+pub fn res_7_h(cpu: &mut CPU) {
+    res_pos_reg(cpu, H, 0b10000000);
+}
+
+pub fn res_7_l(cpu: &mut CPU) {
+    res_pos_reg(cpu, L, 0b10000000);
+}
+
+pub fn res_7_hlind(cpu: &mut CPU) {
+    res_pos_hlind(cpu, 0b10000000);
+}
+
+pub fn res_7_a(cpu: &mut CPU) {
+    res_pos_reg(cpu, A, 0b10000000);
+}
+
+fn set_pos_reg(cpu: &mut CPU, reg: usize, b: u8) {
+    cpu.registers[reg] |= b;
+    cpu.cycles += 8;
+}
+
+fn set_pos_hlind(cpu: &mut CPU, b: u8) {
+    let dir = (cpu.registers[L] as u16 * cpu.registers[H] as u16 * 0x100) as usize;
+    let val = cpu.mem.read(dir) | b;
+    cpu.mem.write(dir, val);
+    cpu.cycles += 16;
+}
+
+pub fn set_0_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b00000001);
+}
+
+pub fn set_0_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b00000001);
+}
+
+pub fn set_0_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b00000001);
+}
+
+pub fn set_0_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b00000001);
+}
+
+pub fn set_0_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b00000001);
+}
+
+pub fn set_0_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b00000001);
+}
+
+pub fn set_0_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b00000001);
+}
+
+pub fn set_0_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b00000001);
+}
+
+pub fn set_1_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b00000010);
+}
+
+pub fn set_1_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b00000010);
+}
+
+pub fn set_1_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b00000010);
+}
+
+pub fn set_1_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b00000010);
+}
+
+pub fn set_1_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b00000010);
+}
+
+pub fn set_1_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b00000010);
+}
+
+pub fn set_1_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b00000010);
+}
+
+pub fn set_1_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b00000010);
+}
+
+pub fn set_2_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b00000100);
+}
+
+pub fn set_2_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b00000100);
+}
+
+pub fn set_2_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b00000100);
+}
+
+pub fn set_2_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b00000100);
+}
+
+pub fn set_2_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b00000100);
+}
+
+pub fn set_2_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b00000100);
+}
+
+pub fn set_2_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b00000100);
+}
+
+pub fn set_2_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b00000100);
+}
+
+pub fn set_3_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b00001000);
+}
+
+pub fn set_3_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b00001000);
+}
+
+pub fn set_3_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b00001000);
+}
+
+pub fn set_3_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b00001000);
+}
+
+pub fn set_3_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b00001000);
+}
+
+pub fn set_3_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b00001000);
+}
+
+pub fn set_3_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b00001000);
+}
+
+pub fn set_3_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b00001000);
+}
+
+pub fn set_4_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b00010000);
+}
+
+pub fn set_4_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b00010000);
+}
+
+pub fn set_4_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b00010000);
+}
+
+pub fn set_4_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b00010000);
+}
+
+pub fn set_4_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b00010000);
+}
+
+pub fn set_4_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b00010000);
+}
+
+pub fn set_4_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b00010000);
+}
+
+pub fn set_4_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b00010000);
+}
+
+pub fn set_5_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b00100000);
+}
+
+pub fn set_5_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b00100000);
+}
+
+pub fn set_5_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b00100000);
+}
+
+pub fn set_5_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b00100000);
+}
+
+pub fn set_5_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b00100000);
+}
+
+pub fn set_5_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b00100000);
+}
+
+pub fn set_5_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b00100000);
+}
+
+pub fn set_5_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b00100000);
+}
+
+pub fn set_6_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b01000000);
+}
+
+pub fn set_6_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b01000000);
+}
+
+pub fn set_6_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b01000000);
+}
+
+pub fn set_6_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b01000000);
+}
+
+pub fn set_6_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b01000000);
+}
+
+pub fn set_6_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b01000000);
+}
+
+pub fn set_6_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b01000000);
+}
+
+pub fn set_6_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b01000000);
+}
+
+pub fn set_7_b(cpu: &mut CPU) {
+    set_pos_reg(cpu, B, 0b10000000);
+}
+
+pub fn set_7_c(cpu: &mut CPU) {
+    set_pos_reg(cpu, C, 0b10000000);
+}
+
+pub fn set_7_d(cpu: &mut CPU) {
+    set_pos_reg(cpu, D, 0b10000000);
+}
+
+pub fn set_7_e(cpu: &mut CPU) {
+    set_pos_reg(cpu, E, 0b10000000);
+}
+
+pub fn set_7_h(cpu: &mut CPU) {
+    set_pos_reg(cpu, H, 0b10000000);
+}
+
+pub fn set_7_l(cpu: &mut CPU) {
+    set_pos_reg(cpu, L, 0b10000000);
+}
+
+pub fn set_7_hlind(cpu: &mut CPU) {
+    set_pos_hlind(cpu, 0b10000000);
+}
+
+pub fn set_7_a(cpu: &mut CPU) {
+    set_pos_reg(cpu, A, 0b10000000);
 }
 
 // CONTROL/BR

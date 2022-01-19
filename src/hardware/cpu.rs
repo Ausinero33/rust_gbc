@@ -31,8 +31,7 @@ pub struct CPU {
     pub op: u8,
 
     inst_set: [fn(&mut CPU); 0x100], // TODO Cambiar tamaño segun vaya haciendo para no errores
-    // cb_set: [fn(); 0x100],
-    cb_set: [fn(&mut CPU); 1] // TODO Temporal para que no me de errores
+    cb_set: [fn(&mut CPU); 0x100],
 }
 
 impl CPU {
@@ -74,7 +73,25 @@ impl CPU {
 /* 0xF_ */      ld_a_ff00u8,    pop_af,         ld_a_ff00c,     di,             error,          push_af,        or_a_u8,        rst_0x30,       ld_hl_sp_i8,    ld_sp_hl,       ld_a_u16ind,    ei,             error,          error,          cp_a_u8,        rst_0x38,
             ],
 
-            cb_set: [| cpu | (print!(""))]
+            cb_set: [
+//              0x_0            0x_1            0x_2            0x_3            0x_4            0x_5            0x_6            0x_7            0x_8            0x_9            0x_A            0x_B            0x_C            0x_D            0x_E            0x_F        
+/* 0x0_ */      rlc_b,          rlc_c,          rlc_d,          rlc_e,          rlc_h,          rlc_l,          rlc_hlind,      rlc_a,          rrc_b,          rrc_c,          rrc_d,          rrc_e,          rrc_h,          rrc_l,          rrc_hlind,      rrc_a,
+/* 0x1_ */      rl_b,           rl_c,           rl_d,           rl_e,           rl_h,           rl_l,           rl_hlind,       rl_a,           rr_b,           rr_c,           rr_d,           rr_e,           rr_h,           rr_l,           rr_hlind,       rr_a,
+/* 0x2_ */      sla_b,          sla_c,          sla_d,          sla_e,          sla_h,          sla_l,          sla_hlind,      sla_a,          sra_b,          sra_c,          sra_d,          sra_e,          sra_h,          sra_l,          sra_hlind,      sra_a, 
+/* 0x3_ */      swap_b,         swap_c,         swap_d,         swap_e,         swap_h,         swap_l,         swap_hlind,     swap_a,         srl_b,          srl_c,          srl_d,          srl_e,          srl_h,          srl_l,          srl_hlind,      srl_a,
+/* 0x4_ */      bit_0_b,        bit_0_c,        bit_0_d,        bit_0_e,        bit_0_h,        bit_0_l,        bit_0_hlind,    bit_0_a,        bit_1_b,        bit_1_c,        bit_1_d,        bit_1_e,        bit_1_h,        bit_1_l,        bit_1_hlind,    bit_1_a,
+/* 0x5_ */      bit_2_b,        bit_2_c,        bit_2_d,        bit_2_e,        bit_2_h,        bit_2_l,        bit_2_hlind,    bit_2_a,        bit_3_b,        bit_3_c,        bit_3_d,        bit_3_e,        bit_3_h,        bit_3_l,        bit_3_hlind,    bit_3_a,
+/* 0x6_ */      bit_4_b,        bit_4_c,        bit_4_d,        bit_4_e,        bit_4_h,        bit_4_l,        bit_4_hlind,    bit_4_a,        bit_5_b,        bit_5_c,        bit_5_d,        bit_5_e,        bit_5_h,        bit_5_l,        bit_5_hlind,    bit_5_a,
+/* 0x7_ */      bit_6_b,        bit_6_c,        bit_6_d,        bit_6_e,        bit_6_h,        bit_6_l,        bit_6_hlind,    bit_6_a,        bit_7_b,        bit_7_c,        bit_7_d,        bit_7_e,        bit_7_h,        bit_7_l,        bit_7_hlind,    bit_7_a,
+/* 0x8_ */      res_0_b,        res_0_c,        res_0_d,        res_0_e,        res_0_h,        res_0_l,        res_0_hlind,    res_0_a,        res_1_b,        res_1_c,        res_1_d,        res_1_e,        res_1_h,        res_1_l,        res_1_hlind,    res_1_a,
+/* 0x9_ */      res_2_b,        res_2_c,        res_2_d,        res_2_e,        res_2_h,        res_2_l,        res_2_hlind,    res_2_a,        res_3_b,        res_3_c,        res_3_d,        res_3_e,        res_3_h,        res_3_l,        res_3_hlind,    res_3_a,
+/* 0xA_ */      res_4_b,        res_4_c,        res_4_d,        res_4_e,        res_4_h,        res_4_l,        res_4_hlind,    res_4_a,        res_5_b,        res_5_c,        res_5_d,        res_5_e,        res_5_h,        res_5_l,        res_5_hlind,    res_5_a,
+/* 0xB_ */      res_6_b,        res_6_c,        res_6_d,        res_6_e,        res_6_h,        res_6_l,        res_6_hlind,    res_6_a,        res_7_b,        res_7_c,        res_7_d,        res_7_e,        res_7_h,        res_7_l,        res_7_hlind,    res_7_a,
+/* 0xC_ */      set_0_b,        set_0_c,        set_0_d,        set_0_e,        set_0_h,        set_0_l,        set_0_hlind,    set_0_a,        set_1_b,        set_1_c,        set_1_d,        set_1_e,        set_1_h,        set_1_l,        set_1_hlind,    set_1_a,
+/* 0xD_ */      set_2_b,        set_2_c,        set_2_d,        set_2_e,        set_2_h,        set_2_l,        set_2_hlind,    set_2_a,        set_3_b,        set_3_c,        set_3_d,        set_3_e,        set_3_h,        set_3_l,        set_3_hlind,    set_3_a,
+/* 0xE_ */      set_4_b,        set_4_c,        set_4_d,        set_4_e,        set_4_h,        set_4_l,        set_4_hlind,    set_4_a,        set_5_b,        set_5_c,        set_5_d,        set_5_e,        set_5_h,        set_5_l,        set_5_hlind,    set_5_a,
+/* 0xF_ */      set_6_b,        set_6_c,        set_6_d,        set_6_e,        set_6_h,        set_6_l,        set_6_hlind,    set_6_a,        set_7_b,        set_7_c,        set_7_d,        set_7_e,        set_7_h,        set_7_l,        set_7_hlind,    set_7_a,      
+            ]
         }
     }
 
@@ -113,8 +130,7 @@ impl CPU {
         if !self.cb_next {
             self.inst_set[op as usize](self);
         } else {
-            //self.cb_set[op as usize](self);
-            self.cb_set[0](self);
+            self.cb_set[op as usize](self);
             self.cb_next = false;
         }
 
