@@ -1,7 +1,5 @@
 use crate::hardware::cpu::CPU;
 
-use super::cpu;
-
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
@@ -669,7 +667,7 @@ pub fn dec_a(cpu: &mut CPU) {
     dec_reg(cpu, A);
 }
 
-pub fn daa(cpu: &mut CPU) {
+pub fn daa(_cpu: &mut CPU) {
     // TODO daa
 }
 
