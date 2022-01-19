@@ -1,5 +1,7 @@
 use crate::hardware::cpu::CPU;
 
+use super::cpu;
+
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
@@ -1158,7 +1160,125 @@ pub fn cp_a_u8(cpu: &mut CPU) {
     cpu.cycles += 8;
 }
 
-// TODO u16 ALU
+// u16 ALU
+
+fn inc_regx(cpu: &mut CPU, regx: usize) {
+    let mut val = cpu.registers[regx] as u16 + cpu.registers[regx - 1] as u16 * 0x100;
+    val = val.wrapping_add(1);
+    cpu.registers[regx] = val as u8;
+    cpu.registers[regx - 1] = (val / 0x100) as u8;
+    cpu.cycles += 8;
+}
+
+pub fn inc_bc(cpu: &mut CPU) {
+    inc_regx(cpu, BC);
+}
+
+pub fn inc_de(cpu: &mut CPU) {
+    inc_regx(cpu, DE);
+}
+
+pub fn inc_hl(cpu: &mut CPU) {
+    inc_regx(cpu, HL);
+}
+
+pub fn inc_sp(cpu: &mut CPU) {
+    cpu.sp = cpu.sp.wrapping_add(1);
+    cpu.cycles += 8;
+}
+
+fn dec_regx(cpu: &mut CPU, regx: usize) {
+    let mut val = cpu.registers[regx] as u16 + cpu.registers[regx - 1] as u16 * 0x100;
+    val = val.wrapping_sub(1);
+    cpu.registers[regx] = val as u8;
+    cpu.registers[regx - 1] = (val / 0x100) as u8;
+    cpu.cycles += 8;
+}
+
+pub fn dec_bc(cpu: &mut CPU) {
+    inc_regx(cpu, BC);
+}
+
+pub fn dec_de(cpu: &mut CPU) {
+    inc_regx(cpu, DE);
+}
+
+pub fn dec_hl(cpu: &mut CPU) {
+    inc_regx(cpu, HL);
+}
+
+pub fn dec_sp(cpu: &mut CPU) {
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.cycles += 8;
+}
+
+fn add_hl_regx(cpu: &mut CPU, regx_src: usize) {
+    let dest = cpu.registers[H] as u16 + cpu.registers[L] as u16 * 0x100;
+    let src = cpu.registers[regx_src] as u16 + cpu.registers[regx_src - 1] as u16 * 0x100;
+
+    set_flags(cpu, H_FLAG, dest & 0x0FFF + src & 0x0FFF > 0x0FFF);
+    let x = dest.overflowing_add(src);
+    cpu.registers[H] = x.0 as u8;
+    cpu.registers[L] = (x.0 / 0x100) as u8;
+    set_flags(cpu, N_FLAG, false);
+    set_flags(cpu, C_FLAG, x.1);
+    cpu.cycles += 8;
+}
+
+pub fn add_hl_bc(cpu: &mut CPU) {
+    add_hl_regx(cpu, BC);
+}
+
+pub fn add_hl_de(cpu: &mut CPU) {
+    add_hl_regx(cpu, DE);
+}
+
+pub fn add_hl_hl(cpu: &mut CPU) {
+    add_hl_regx(cpu, HL);
+}
+
+pub fn add_hl_sp(cpu: &mut CPU) {
+    let dest = cpu.registers[H] as u16 + cpu.registers[L] as u16 * 0x100;
+
+    set_flags(cpu, H_FLAG, dest & 0x0FFF + cpu.sp & 0x0FFF > 0x0FFF);
+    let x = dest.overflowing_add(cpu.sp);
+    cpu.registers[H] = x.0 as u8;
+    cpu.registers[L] = (x.0 / 0x100) as u8;
+    set_flags(cpu, N_FLAG, false);
+    set_flags(cpu, C_FLAG, x.1);
+    cpu.cycles += 8;
+}
+
+pub fn add_sp_i8(cpu: &mut CPU) {
+    let val = cpu.fetch() as i16;
+    let src = cpu.sp as i16;
+
+    set_flags(cpu, H_FLAG, check_half_carry(val as u8, src as u8));
+    
+    let x = src.overflowing_add(val);
+    cpu.sp = x.0 as u16;
+
+    set_flags(cpu, Z_FLAG | N_FLAG, false);
+    set_flags(cpu, C_FLAG, x.1);
+
+    cpu.cycles += 16;
+}
+
+pub fn ld_hl_sp_i8(cpu: &mut CPU) {
+    let val = cpu.fetch() as i16;
+    let src = cpu.sp as i16;
+    
+    set_flags(cpu, H_FLAG, check_half_carry(val as u8, src as u8));
+
+    let x = src.overflowing_add(val);
+    cpu.registers[L] = x.0 as u8;
+    cpu.registers[H] = (x.0 as u16 / 0x100) as u8;
+
+    set_flags(cpu, Z_FLAG | N_FLAG, false);
+    set_flags(cpu, C_FLAG, x.1);
+
+    cpu.cycles += 12;
+}
 
 // TODO CB u8
 
