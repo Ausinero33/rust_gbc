@@ -1,7 +1,5 @@
 use crate::hardware::cpu::CPU;
 
-use super::cpu;
-
 // FLAGS
 const Z_FLAG: u8 = 0b10000000;
 const N_FLAG: u8 = 0b01000000;
@@ -25,8 +23,8 @@ const DE: usize = 5;
 const HL: usize = 7;
 
 // Instruccion "vacia"
-pub fn error(_cpu: &mut CPU) {
-    println!("Instrucción no válida.");
+pub fn error(cpu: &mut CPU) {
+    println!("Instrucción no válida: {:02X}.", cpu.op);
 }
 
 fn set_flags(cpu: &mut CPU, flag: u8, cond: bool) {
@@ -568,7 +566,7 @@ pub fn push_af(cpu: &mut CPU) {
 // u8 ALU
 
 fn check_half_carry(op1: u8, op2: u8) -> bool {
-    op1 & 0x0F + op2 & 0x0F > 0x0F
+    (op1 & 0x0F) + (op2 & 0x0F) > 0x0F
 }
 
 fn check_half_borrow(op1: u8, op2: u8) -> bool {
@@ -741,7 +739,7 @@ pub fn add_a_a(cpu: &mut CPU) {
 }
 
 fn check_half_carry_cy(op1: u8, op2: u8, cy: u8) -> bool {
-    op1 & 0x0F + op2 & 0x0F + cy > 0x0F
+    (op1 & 0x0F) + (op2 & 0x0F) + (cy & 0x0F) > 0x0F
 }
 
 fn adc_a_reg(cpu: &mut CPU, reg_src: usize) {

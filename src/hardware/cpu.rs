@@ -1,6 +1,16 @@
 use crate::hardware::mmu::MMU;
 use crate::hardware::inst_set::*;
 
+// Registros
+const A: usize = 0;
+const F: usize = 1;
+const B: usize = 2;
+const C: usize = 3;
+const D: usize = 4;
+const E: usize = 5;
+const H: usize = 6;
+const L: usize = 7;
+
 pub struct CPU {
     pub registers: [u8; 8],
     pub pc: u16,
@@ -17,6 +27,8 @@ pub struct CPU {
 
     // Variable para comprobar si la siguiente instruccion es CB
     pub cb_next: bool,
+
+    pub op: u8,
 
     inst_set: [fn(&mut CPU); 0x100], // TODO Cambiar tamaño segun vaya haciendo para no errores
     // cb_set: [fn(); 0x100],
@@ -39,6 +51,8 @@ impl CPU {
             ime_temp: false,
 
             cb_next: false,
+
+            op: 0,
 
             inst_set: [
 //              0x_0            0x_1            0x_2            0x_3            0x_4            0x_5            0x_6            0x_7            0x_8            0x_9            0x_A            0x_B            0x_C            0x_D            0x_E            0x_F        
@@ -64,10 +78,24 @@ impl CPU {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.registers[A] = 0x01;
+        self.registers[F] = 0x00;
+        self.registers[B] = 0x00;
+        self.registers[C] = 0x14;
+        self.registers[D] = 0x00;
+        self.registers[E] = 0x00;
+        self.registers[H] = 0xC0;
+        self.registers[L] = 0x60;
+
+        self.sp = 0xFFFE;
+        self.mem.reset();
+        self.pc = 0x100;
+    }
+
     pub fn cycle(&mut self) {
-        //let op = self.fetch();
-        
-        self.decode_execute(0);
+        let op = self.fetch();
+        self.decode_execute(op);
     }
 
     pub fn fetch(&mut self) -> u8 {
@@ -77,6 +105,7 @@ impl CPU {
     }
 
     fn decode_execute(&mut self, op: u8) {
+        self.op = op;
         if self.cycles_di_ie > 0 {
             self.cycles_di_ie += 1;
         }
@@ -85,7 +114,7 @@ impl CPU {
             self.inst_set[op as usize](self);
         } else {
             //self.cb_set[op as usize](self);
-            self.cb_set[1](self);
+            self.cb_set[0](self);
             self.cb_next = false;
         }
 
