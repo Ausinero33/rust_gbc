@@ -42,8 +42,8 @@ impl CPU {
 
             inst_set: [
 //              0x_0            0x_1            0x_2            0x_3            0x_4            0x_5            0x_6            0x_7            0x_8            0x_9            0x_A            0x_B            0x_C            0x_D            0x_E            0x_F        
-/* 0x0_ */      nop,            ld_bc_u16,      ld_bcind_a,     inc_bc,         inc_b,          dec_b,          ld_b_u8,        error,          ld_u16ind_sp,   add_hl_bc,      ld_a_bcind,     dec_bc,         inc_c,          dec_c,          ld_c_u8,        error,
-/* 0x1_ */      stop,           ld_de_u16,      ld_deind_a,     inc_de,         inc_d,          dec_d,          ld_d_u8,        error,          jr_i8,          add_hl_de,      ld_a_deind,     dec_de,         inc_e,          dec_e,          ld_e_u8,        error,
+/* 0x0_ */      nop,            ld_bc_u16,      ld_bcind_a,     inc_bc,         inc_b,          dec_b,          ld_b_u8,        rlca,           ld_u16ind_sp,   add_hl_bc,      ld_a_bcind,     dec_bc,         inc_c,          dec_c,          ld_c_u8,        rrca,
+/* 0x1_ */      stop,           ld_de_u16,      ld_deind_a,     inc_de,         inc_d,          dec_d,          ld_d_u8,        rla,            jr_i8,          add_hl_de,      ld_a_deind,     dec_de,         inc_e,          dec_e,          ld_e_u8,        rra,
 /* 0x2_ */      jr_nz_i8,       ld_hl_u16,      ld_hlindinc_a,  inc_hl,         inc_h,          dec_h,          ld_h_u8,        daa,            jr_z_i8,        add_hl_hl,      ld_a_hlindinc,  dec_hl,         inc_l,          dec_l,          ld_l_u8,        cpl,
 /* 0x3_ */      jr_nc_i8,       ld_sp_u16,      ld_hlinddec_a,  inc_sp,         inc_hlind,      dec_hlind,      ld_hlind_u8,    scf,            jr_c_i8,        add_hl_sp,      ld_a_hlinddec,  dec_sp,         inc_a,          dec_a,          ld_a_u8,        ccf,
 /* 0x4_ */      ld_b_b,         ld_b_c,         ld_b_d,         ld_b_e,         ld_b_h,         ld_b_l,         ld_b_hlind,     ld_b_a,         ld_c_b,         ld_c_c,         ld_c_d,         ld_c_e,         ld_c_h,         ld_c_l,         ld_c_hlind,     ld_c_a,

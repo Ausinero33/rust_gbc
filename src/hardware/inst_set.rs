@@ -1292,7 +1292,69 @@ pub fn ld_hl_sp_i8(cpu: &mut CPU) {
     cpu.cycles += 12;
 }
 
-// TODO CB u8
+// TODO x8/RSB
+
+pub fn rlca(cpu: &mut CPU) {
+    let mut rot = cpu.registers[A];
+    let carry = rot & 0b10000000;
+
+    set_flags(cpu, C_FLAG, carry == 0b10000000);
+
+    rot <<= 1;
+    rot |= carry >> 7;
+    cpu.registers[A] = rot;
+
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
+
+pub fn rla(cpu: &mut CPU) {
+    let mut rot = cpu.registers[A];
+    let carry = rot & 0b10000000;
+    let prev_carry = cpu.registers[F] & C_FLAG;
+
+    set_flags(cpu, C_FLAG, carry == 0b10000000);
+
+    rot <<= 1;
+    rot |= prev_carry >> 4;
+    cpu.registers[A] = rot;
+
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
+
+pub fn rrca(cpu: &mut CPU) {
+    let mut rot = cpu.registers[A];
+    let carry = rot & 1;
+
+    set_flags(cpu, C_FLAG, carry == 0b00000001);
+
+    rot >>= 1;
+    rot |= carry << 7;
+    cpu.registers[A] = rot;
+
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
+
+pub fn rra(cpu: &mut CPU) {
+    let mut rot = cpu.registers[A];
+    let carry = rot & 0b00000001;
+    let prev_carry = cpu.registers[F] & C_FLAG;
+
+    set_flags(cpu, C_FLAG, carry == 0b00000001);
+
+    rot >>= 1;
+    rot |= prev_carry << 3;
+    cpu.registers[A] = rot;
+
+    set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
+
+    cpu.cycles += 4;
+}
 
 // CONTROL/BR
 pub fn nop(cpu: &mut CPU) {
