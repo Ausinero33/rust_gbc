@@ -1282,8 +1282,37 @@ pub fn ld_hl_sp_i8(cpu: &mut CPU) {
 
 // TODO CB u8
 
-// TODO CONTROL/BR
+// CONTROL/BR
 pub fn nop(cpu: &mut CPU) {
+    cpu.cycles += 4;
+}
+
+pub fn stop(cpu: &mut CPU) {
+    cpu.stop = true;
+    cpu.pc += 1;
+    cpu.cycles += 4;
+}
+
+pub fn halt(cpu: &mut CPU) {
+    cpu.halt = true;
+    cpu.cycles += 4;
+}
+
+pub fn di(cpu: &mut CPU) {
+    cpu.cycles_di_ie = 1;
+    cpu.ime_temp = false;
+    cpu.cycles += 4;
+}
+
+pub fn ei(cpu: &mut CPU) {
+    cpu.cycles_di_ie = 1;
+    cpu.ime_temp = true;
+    cpu.cycles += 4; 
+}
+
+pub fn cb(cpu: &mut CPU) {
+    let op = cpu.fetch();
+    cpu.cb_next = true;
     cpu.cycles += 4;
 }
 
