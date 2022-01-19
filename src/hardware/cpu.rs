@@ -16,7 +16,7 @@ pub struct CPU {
     pub pc: u16,
     pub sp: u16,
     pub mem: MMU,
-    pub cycles: u32,
+    pub cycles: u64,
     pub stop: bool,
     pub halt: bool,
 
@@ -74,19 +74,19 @@ impl CPU {
 /* 0xF_ */      ld_a_ff00u8,    pop_af,         ld_a_ff00c,     di,             error,          push_af,        or_a_u8,        rst_0x30,       ld_hl_sp_i8,    ld_sp_hl,       ld_a_u16ind,    ei,             error,          error,          cp_a_u8,        rst_0x38,
             ],
 
-            cb_set: [| cpu | (println!("CB Ins"))]
+            cb_set: [| cpu | (print!(""))]
         }
     }
 
     pub fn reset(&mut self) {
         self.registers[A] = 0x01;
-        self.registers[F] = 0x00;
+        self.registers[F] = 0x80;
         self.registers[B] = 0x00;
-        self.registers[C] = 0x14;
+        self.registers[C] = 0x13;
         self.registers[D] = 0x00;
-        self.registers[E] = 0x00;
-        self.registers[H] = 0xC0;
-        self.registers[L] = 0x60;
+        self.registers[E] = 0xD8;
+        self.registers[H] = 0x01;
+        self.registers[L] = 0x4D;
 
         self.sp = 0xFFFE;
         self.mem.reset();

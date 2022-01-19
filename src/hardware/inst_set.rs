@@ -36,19 +36,19 @@ fn set_flags(cpu: &mut CPU, flag: u8, cond: bool) {
 }
 
 fn get_zero(cpu: &mut CPU) -> u8 {
-    cpu.registers[F] & Z_FLAG >> 7
+    (cpu.registers[F] & Z_FLAG) >> 7
 }
 
 fn get_negative(cpu: &mut CPU) -> u8 {
-    cpu.registers[F] & N_FLAG >> 6
+    (cpu.registers[F] & N_FLAG) >> 6
 }
 
 fn get_half_carry(cpu: &mut CPU) -> u8 {
-    cpu.registers[F] & H_FLAG >> 5
+    (cpu.registers[F] & H_FLAG) >> 5
 }
 
 fn get_carry(cpu: &mut CPU) -> u8 {
-    cpu.registers[F] & C_FLAG >> 4
+    (cpu.registers[F] & C_FLAG) >> 4
 }
 
 // u8 LOAD/STORE/MOVE
@@ -120,23 +120,23 @@ pub fn ld_b_u8(cpu: &mut CPU) {
 }
 
 pub fn ld_d_u8(cpu: &mut CPU) {
-    u8_to_reg(cpu, B);
+    u8_to_reg(cpu, D);
 }
 
 pub fn ld_h_u8(cpu: &mut CPU) {
-    u8_to_reg(cpu, B);
+    u8_to_reg(cpu, H);
 }
 
 pub fn ld_c_u8(cpu: &mut CPU) {
-    u8_to_reg(cpu, B);
+    u8_to_reg(cpu, C);
 }
 
 pub fn ld_e_u8(cpu: &mut CPU) {
-    u8_to_reg(cpu, B);
+    u8_to_reg(cpu, E);
 }
 
 pub fn ld_l_u8(cpu: &mut CPU) {
-    u8_to_reg(cpu, B);
+    u8_to_reg(cpu, L);
 }
 
 pub fn ld_hlind_u8(cpu: &mut CPU) {
@@ -145,7 +145,7 @@ pub fn ld_hlind_u8(cpu: &mut CPU) {
 }
 
 pub fn ld_a_u8(cpu: &mut CPU) {
-    u8_to_reg(cpu, B);
+    u8_to_reg(cpu, A);
 }
 
 pub fn ld_a_bcind(cpu: &mut CPU) {
@@ -380,31 +380,31 @@ pub fn ld_l_a(cpu: &mut CPU) {
 
 
 pub fn ld_hlind_b(cpu: &mut CPU) {
-    reg_to_regxind(cpu, B, HL);
+    reg_to_regxind(cpu, HL, B);
 }
 
 pub fn ld_hlind_c(cpu: &mut CPU) {
-    reg_to_regxind(cpu, C, HL);
+    reg_to_regxind(cpu, HL, C);
 }
 
 pub fn ld_hlind_d(cpu: &mut CPU) {
-    reg_to_regxind(cpu, D, HL);
+    reg_to_regxind(cpu, HL, D);
 }
 
 pub fn ld_hlind_e(cpu: &mut CPU) {
-    reg_to_regxind(cpu, E, HL);
+    reg_to_regxind(cpu, HL, E);
 }
 
 pub fn ld_hlind_h(cpu: &mut CPU) {
-    reg_to_regxind(cpu, H, HL);
+    reg_to_regxind(cpu, HL, H);
 }
 
 pub fn ld_hlind_l(cpu: &mut CPU) {
-    reg_to_regxind(cpu, L, HL);
+    reg_to_regxind(cpu, HL, L);
 }
 
 pub fn ld_hlind_a(cpu: &mut CPU) {
-    reg_to_regxind(cpu, A, HL);
+    reg_to_regxind(cpu, HL, A);
 }
 
 
@@ -496,9 +496,9 @@ fn pop_regx(cpu: &mut CPU, regx: usize) {
 
 fn push_regx(cpu: &mut CPU, regx: usize) {
     cpu.sp -= 1;
-    cpu.mem.write(cpu.sp as usize, cpu.registers[regx]);
-    cpu.sp -= 1;
     cpu.mem.write(cpu.sp as usize, cpu.registers[regx - 1]);
+    cpu.sp -= 1;
+    cpu.mem.write(cpu.sp as usize, cpu.registers[regx]);
     cpu.cycles += 16;
 }
 
@@ -1260,12 +1260,12 @@ pub fn add_hl_sp(cpu: &mut CPU) {
 }
 
 pub fn add_sp_i8(cpu: &mut CPU) {
-    let val = cpu.fetch() as i16;
+    let val = cpu.fetch() as i8;
     let src = cpu.sp as i16;
 
     set_flags(cpu, H_FLAG, check_half_carry(val as u8, src as u8));
     
-    let x = src.overflowing_add(val);
+    let x = src.overflowing_add(val as i16);
     cpu.sp = x.0 as u16;
 
     set_flags(cpu, Z_FLAG | N_FLAG, false);
@@ -1275,12 +1275,12 @@ pub fn add_sp_i8(cpu: &mut CPU) {
 }
 
 pub fn ld_hl_sp_i8(cpu: &mut CPU) {
-    let val = cpu.fetch() as i16;
+    let val = cpu.fetch() as i8;
     let src = cpu.sp as i16;
     
     set_flags(cpu, H_FLAG, check_half_carry(val as u8, src as u8));
 
-    let x = src.overflowing_add(val);
+    let x = src.overflowing_add(val as i16);
     cpu.registers[L] = x.0 as u8;
     cpu.registers[H] = (x.0 as u16 / 0x100) as u8;
 
@@ -1390,18 +1390,18 @@ pub fn cb(cpu: &mut CPU) {
 // CONTROL/MISC
 
 pub fn jr_i8(cpu: &mut CPU) {
-    let val = cpu.fetch() as i16;
+    let val = cpu.fetch() as i8;
     let mut pc = cpu.pc as i16;
-    pc = pc.overflowing_add(val).0;
+    pc = pc.overflowing_add(val as i16).0;
     cpu.pc = pc as u16;
     cpu.cycles += 12;
 }
 
 fn jr_flag_i8(cpu: &mut CPU, flag: bool) {
-    let val = cpu.fetch() as i16;
+    let val = cpu.fetch() as i8;
     if flag {
         let mut pc = cpu.pc as i16;
-        pc = pc.overflowing_add(val).0;
+        pc = pc.overflowing_add(val as i16).0;
         cpu.pc = pc as u16;
         cpu.cycles += 12;
         return;
@@ -1529,9 +1529,9 @@ fn call_flag_u16(cpu: &mut CPU, flag: bool) {
         cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
 
         cpu.sp = cpu.sp.wrapping_sub(1);
-        cpu.mem.write(cpu.sp as usize, pc_ant as u8);
-        cpu.sp = cpu.sp.wrapping_sub(1);
         cpu.mem.write(cpu.sp as usize, (pc_ant / 0x100) as u8);
+        cpu.sp = cpu.sp.wrapping_sub(1);
+        cpu.mem.write(cpu.sp as usize, pc_ant as u8);
 
         cpu.cycles += 24;
         return;
@@ -1564,9 +1564,9 @@ pub fn call_u16(cpu: &mut CPU) {
     let pc_high = cpu.fetch() as usize;
 
     cpu.sp = cpu.sp.wrapping_sub(1);
-    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
-    cpu.sp = cpu.sp.wrapping_sub(1);
     cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
 
     cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
 

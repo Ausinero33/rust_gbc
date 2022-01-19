@@ -7,17 +7,21 @@ fn main() {
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms\\individual\\01-special.gb");
+    cpu.mem.load_rom("roms\\individual\\03-op sp,hl.gb");
 
     loop {
         cpu.cycle();
 
         if cpu.mem.read(0xff02 as usize) == 0x81 {
             let c = cpu.mem.read(0xff01 as usize);
-            println!("{}", c);
+            print!("{}", c as char);
             cpu.mem.write(0xff02 as usize, 0);
         }
 
-        cpu.cycles = 0;
+        if cpu.pc == 0xC16B {
+            let a = 0;
+        }
+
+        //cpu.cycles = 0;
     }
 }
