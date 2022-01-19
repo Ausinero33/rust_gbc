@@ -37,6 +37,18 @@ fn set_flags(cpu: &mut CPU, flag: u8, cond: bool) {
     }
 }
 
+fn get_zero(cpu: &mut CPU) -> u8 {
+    cpu.registers[F] & Z_FLAG >> 7
+}
+
+fn get_negative(cpu: &mut CPU) -> u8 {
+    cpu.registers[F] & N_FLAG >> 6
+}
+
+fn get_half_carry(cpu: &mut CPU) -> u8 {
+    cpu.registers[F] & H_FLAG >> 5
+}
+
 fn get_carry(cpu: &mut CPU) -> u8 {
     cpu.registers[F] & C_FLAG >> 4
 }
@@ -1196,15 +1208,15 @@ fn dec_regx(cpu: &mut CPU, regx: usize) {
 }
 
 pub fn dec_bc(cpu: &mut CPU) {
-    inc_regx(cpu, BC);
+    dec_regx(cpu, BC);
 }
 
 pub fn dec_de(cpu: &mut CPU) {
-    inc_regx(cpu, DE);
+    dec_regx(cpu, DE);
 }
 
 pub fn dec_hl(cpu: &mut CPU) {
-    inc_regx(cpu, HL);
+    dec_regx(cpu, HL);
 }
 
 pub fn dec_sp(cpu: &mut CPU) {
@@ -1311,9 +1323,234 @@ pub fn ei(cpu: &mut CPU) {
 }
 
 pub fn cb(cpu: &mut CPU) {
-    let op = cpu.fetch();
     cpu.cb_next = true;
     cpu.cycles += 4;
 }
 
-// TODO CONTROL/MISC
+// CONTROL/MISC
+
+pub fn jr_i8(cpu: &mut CPU) {
+    let val = cpu.fetch() as i16;
+    let mut pc = cpu.pc as i16;
+    pc = pc.overflowing_add(val).0;
+    cpu.pc = pc as u16;
+    cpu.cycles += 12;
+}
+
+fn jr_flag_i8(cpu: &mut CPU, flag: bool) {
+    let val = cpu.fetch() as i16;
+    if flag {
+        let mut pc = cpu.pc as i16;
+        pc = pc.overflowing_add(val).0;
+        cpu.pc = pc as u16;
+        cpu.cycles += 12;
+        return;
+    }
+    cpu.cycles += 8;
+}
+
+pub fn jr_nz_i8(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    jr_flag_i8(cpu, !flag);
+}
+
+pub fn jr_z_i8(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    jr_flag_i8(cpu, flag);
+}
+
+pub fn jr_nc_i8(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    jr_flag_i8(cpu, !flag);
+}
+
+pub fn jr_c_i8(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    jr_flag_i8(cpu, flag);
+}
+
+fn ret_flag(cpu: &mut CPU, flag: bool) {
+    if flag {
+        let pc_low = cpu.mem.read(cpu.sp as usize);
+        cpu.sp = cpu.sp.wrapping_add(1);
+        let pc_high = cpu.mem.read(cpu.sp as usize);
+        cpu.sp = cpu.sp.wrapping_add(1);
+        cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+        cpu.cycles += 20;
+        return;
+    }
+    cpu.cycles += 8;
+}
+
+pub fn ret_nz(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    ret_flag(cpu, !flag);
+}
+
+pub fn ret_z(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    ret_flag(cpu, flag);
+}
+
+pub fn ret_nc(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    ret_flag(cpu, !flag);
+}
+
+pub fn ret_c(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    ret_flag(cpu, flag);
+}
+
+pub fn ret(cpu: &mut CPU) {
+    let pc_low = cpu.mem.read(cpu.sp as usize);
+    cpu.sp = cpu.sp.wrapping_add(1);
+    let pc_high = cpu.mem.read(cpu.sp as usize);
+    cpu.sp = cpu.sp.wrapping_add(1);
+    cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+    cpu.cycles += 16;
+}
+
+pub fn reti(cpu: &mut CPU) {
+    let pc_low = cpu.mem.read(cpu.sp as usize);
+    cpu.sp = cpu.sp.wrapping_add(1);
+    let pc_high = cpu.mem.read(cpu.sp as usize);
+    cpu.sp = cpu.sp.wrapping_add(1);
+    cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+    cpu.ime = true;
+    cpu.cycles += 16;
+}
+
+fn jp_flag_u16(cpu: &mut CPU, flag: bool) {
+    let pc_low = cpu.fetch() as usize;
+    let pc_high = cpu.fetch() as usize;
+
+    if flag {
+        cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+        cpu.cycles += 16;
+        return;
+    }
+    cpu.cycles += 12;
+}
+
+pub fn jp_nz_u16(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    jp_flag_u16(cpu, !flag);
+}
+
+pub fn jp_z_u16(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    jp_flag_u16(cpu, flag);
+}
+
+pub fn jp_nc_u16(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    jp_flag_u16(cpu, !flag);
+}
+
+pub fn jp_c_u16(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    jp_flag_u16(cpu, flag);
+}
+
+pub fn jp_u16(cpu: &mut CPU) {
+    let pc_low = cpu.fetch() as usize;
+    let pc_high = cpu.fetch() as usize;
+    cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+    cpu.cycles += 16;
+}
+
+fn call_flag_u16(cpu: &mut CPU, flag: bool) {
+    let pc_low = cpu.fetch() as usize;
+    let pc_high = cpu.fetch() as usize;
+
+    if flag {
+        let pc_ant = cpu.pc;
+        cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+
+        cpu.sp = cpu.sp.wrapping_sub(1);
+        cpu.mem.write(cpu.sp as usize, pc_ant as u8);
+        cpu.sp = cpu.sp.wrapping_sub(1);
+        cpu.mem.write(cpu.sp as usize, (pc_ant / 0x100) as u8);
+
+        cpu.cycles += 24;
+        return;
+    }
+    cpu.cycles += 12;
+}
+
+pub fn call_nz_u16(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    call_flag_u16(cpu, !flag);
+}
+
+pub fn call_z_u16(cpu: &mut CPU) {
+    let flag = get_zero(cpu) != 0;
+    call_flag_u16(cpu, flag);
+}
+
+pub fn call_nc_u16(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    call_flag_u16(cpu, !flag);
+}
+
+pub fn call_c_u16(cpu: &mut CPU) {
+    let flag = get_carry(cpu) != 0;
+    call_flag_u16(cpu, flag);
+}
+
+pub fn call_u16(cpu: &mut CPU) {
+    let pc_low = cpu.fetch() as usize;
+    let pc_high = cpu.fetch() as usize;
+
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
+
+    cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
+
+    cpu.cycles += 24;
+}
+
+fn rst_dir(cpu: &mut CPU, dir: u8) {
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
+
+    cpu.pc = cpu.pc.wrapping_add(dir as u16);
+    cpu.cycles += 16;
+}
+
+pub fn rst_0x00(cpu: &mut CPU) {
+    rst_dir(cpu, 0x00);
+}
+
+pub fn rst_0x10(cpu: &mut CPU) {
+    rst_dir(cpu, 0x10);
+}
+
+pub fn rst_0x20(cpu: &mut CPU) {
+    rst_dir(cpu, 0x20);
+}
+
+pub fn rst_0x30(cpu: &mut CPU) {
+    rst_dir(cpu, 0x30);
+}
+
+pub fn rst_0x08(cpu: &mut CPU) {
+    rst_dir(cpu, 0x08);
+}
+
+pub fn rst_0x18(cpu: &mut CPU) {
+    rst_dir(cpu, 0x18);
+}
+
+pub fn rst_0x28(cpu: &mut CPU) {
+    rst_dir(cpu, 0x28);
+}
+
+pub fn rst_0x38(cpu: &mut CPU) {
+    rst_dir(cpu, 0x38);
+}
