@@ -7,7 +7,7 @@ fn main() {
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms\\individual\\03-op sp,hl.gb");
+    cpu.mem.load_rom("roms\\individual\\07-jr,jp,call,ret,rst.gb");
 
     loop {
         cpu.cycle();
@@ -18,10 +18,13 @@ fn main() {
             cpu.mem.write(0xff02 as usize, 0);
         }
 
-        if cpu.pc == 0x0206 {
+        if cpu.pc == 0xC3FC {
             let _a = 0;
         }
 
+        if cpu.stop {
+            break;
+        }
         //cpu.cycles = 0;
     }
 }

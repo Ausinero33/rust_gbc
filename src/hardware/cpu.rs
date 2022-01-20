@@ -30,7 +30,7 @@ pub struct CPU {
 
     pub op: u8,
 
-    inst_set: [fn(&mut CPU); 0x100], // TODO Cambiar tamaño segun vaya haciendo para no errores
+    inst_set: [fn(&mut CPU); 0x100],
     cb_set: [fn(&mut CPU); 0x100],
 }
 

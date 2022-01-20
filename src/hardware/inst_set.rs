@@ -667,8 +667,31 @@ pub fn dec_a(cpu: &mut CPU) {
     dec_reg(cpu, A);
 }
 
-pub fn daa(_cpu: &mut CPU) {
-    // TODO daa
+pub fn daa(cpu: &mut CPU) {
+    let mut val = cpu.registers[A] as u16;
+
+    if get_negative(cpu) == 0 {
+        if get_half_carry(cpu) == 1 || val & 0x0F > 0x09 {
+            val += 0x06;
+        }
+        if get_carry(cpu) == 1 || val > 0x9F {
+            val += 0x60;
+            set_flags(cpu, C_FLAG, true);
+        }
+    } else {
+        if get_half_carry(cpu) == 1 {
+			val -= 0x6;
+		}
+
+		if get_carry(cpu) == 1 {
+			val -= 0x60;
+		}
+    }
+
+    set_flags(cpu, Z_FLAG, val & 0xFF == 0);
+    set_flags(cpu, H_FLAG, false);
+    cpu.registers[A] = val as u8;
+    cpu.cycles += 4;
 }
 
 pub fn scf(cpu: &mut CPU) {
@@ -2691,7 +2714,7 @@ pub fn jr_nc_i8(cpu: &mut CPU) {
 }
 
 pub fn jr_c_i8(cpu: &mut CPU) {
-    let flag = get_carry(cpu) != 0;
+    let flag = get_carry(cpu) != 0; 
     jr_flag_i8(cpu, flag);
 }
 
