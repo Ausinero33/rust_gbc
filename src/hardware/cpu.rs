@@ -69,7 +69,7 @@ impl CPU {
 /* 0xB_ */      or_a_b,         or_a_c,         or_a_d,         or_a_e,         or_a_h,         or_a_l,         or_a_hlind,     or_a_a,         cp_a_b,         cp_a_c,         cp_a_d,         cp_a_e,         cp_a_h,         cp_a_l,         cp_a_hlind,     cp_a_a,
 /* 0xC_ */      ret_nz,         pop_bc,         jp_nz_u16,      jp_u16,         call_nz_u16,    push_bc,        add_a_u8,       rst_0x00,       ret_z,          ret,            jp_z_u16,       cb,             call_z_u16,     call_u16,       adc_a_u8,       rst_0x08,
 /* 0xD_ */      ret_nc,         pop_de,         jp_nc_u16,      error,          call_nc_u16,    push_de,        sub_a_u8,       rst_0x10,       ret_c,          reti,           jp_c_u16,       error,          call_c_u16,     error,          sbc_a_u8,       rst_0x18,
-/* 0xE_ */      ld_ff00u8_a,    pop_hl,         ld_ff00c_a,     error,          error,          push_hl,        and_a_u8,       rst_0x20,       add_sp_i8,      error,          ld_u16ind_a,    error,          error,          error,          xor_a_u8,       rst_0x28,
+/* 0xE_ */      ld_ff00u8_a,    pop_hl,         ld_ff00c_a,     error,          error,          push_hl,        and_a_u8,       rst_0x20,       add_sp_i8,      jp_hl,          ld_u16ind_a,    error,          error,          error,          xor_a_u8,       rst_0x28,
 /* 0xF_ */      ld_a_ff00u8,    pop_af,         ld_a_ff00c,     di,             error,          push_af,        or_a_u8,        rst_0x30,       ld_hl_sp_i8,    ld_sp_hl,       ld_a_u16ind,    ei,             error,          error,          cp_a_u8,        rst_0x38,
             ],
 

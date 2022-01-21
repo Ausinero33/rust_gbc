@@ -544,7 +544,11 @@ pub fn pop_hl(cpu: &mut CPU) {
 }
 
 pub fn pop_af(cpu: &mut CPU) {
-    pop_regx(cpu, AF);
+    cpu.registers[F] = cpu.mem.read(cpu.sp as usize) & 0xF0;
+    cpu.sp += 1;
+    cpu.registers[A] = cpu.mem.read(cpu.sp as usize);
+    cpu.sp += 1;
+    cpu.cycles += 12;
 }
 
 pub fn push_bc(cpu: &mut CPU) {
@@ -680,11 +684,11 @@ pub fn daa(cpu: &mut CPU) {
         }
     } else {
         if get_half_carry(cpu) == 1 {
-			val -= 0x6;
+			val = val.wrapping_sub(0x06);
 		}
 
 		if get_carry(cpu) == 1 {
-			val -= 0x60;
+			val = val.wrapping_sub(0x60);
 		}
     }
 
@@ -1004,7 +1008,7 @@ pub fn xor_a_l(cpu: &mut CPU) {
 }
 
 pub fn xor_a_hlind(cpu: &mut CPU) {
-    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 + 0x100;
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
     let val = cpu.mem.read(dir as usize);
     cpu.registers[A] ^= val;
     set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
@@ -1125,7 +1129,7 @@ pub fn adc_a_u8(cpu: &mut CPU) {
     let val = cpu.fetch();
     let cy = get_carry(cpu);
     set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], val, cy));
-    let x = cpu.registers[A].overflowing_add(val + cy);
+    let x = cpu.registers[A].overflowing_add(val.wrapping_add(cy));
     cpu.registers[A] = x.0;
     set_flags(cpu, Z_FLAG, x.0 == 0);
     set_flags(cpu, C_FLAG, x.1);
@@ -1148,7 +1152,7 @@ pub fn sbc_a_u8(cpu: &mut CPU) {
     let val = cpu.fetch();
     let cy = get_carry(cpu);
     set_flags(cpu, H_FLAG, check_half_borrow_cy(cpu.registers[A], val, cy));
-    let x = cpu.registers[A].overflowing_sub(val + cy);
+    let x = cpu.registers[A].overflowing_sub(val.wrapping_sub(cy));
     cpu.registers[A] = x.0;
     set_flags(cpu, Z_FLAG, x.0 == 0);
     set_flags(cpu, C_FLAG, x.1);
@@ -1273,7 +1277,7 @@ pub fn add_hl_hl(cpu: &mut CPU) {
 pub fn add_hl_sp(cpu: &mut CPU) {
     let dest = cpu.registers[H] as u16 + cpu.registers[L] as u16 * 0x100;
 
-    set_flags(cpu, H_FLAG, dest & 0x0FFF + cpu.sp & 0x0FFF > 0x0FFF);
+    set_flags(cpu, H_FLAG, (dest & 0x0FFF) + (cpu.sp & 0x0FFF) > 0x0FFF);
     let x = dest.overflowing_add(cpu.sp);
     cpu.registers[H] = x.0 as u8;
     cpu.registers[L] = (x.0 / 0x100) as u8;
@@ -1316,6 +1320,7 @@ pub fn ld_hl_sp_i8(cpu: &mut CPU) {
 // x8/RSB
 
 pub fn rlca(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[A];
     let carry = rot & 0b10000000;
 
@@ -1331,6 +1336,7 @@ pub fn rlca(cpu: &mut CPU) {
 }
 
 pub fn rla(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[A];
     let carry = rot & 0b10000000;
     let prev_carry = cpu.registers[F] & C_FLAG;
@@ -1347,6 +1353,7 @@ pub fn rla(cpu: &mut CPU) {
 }
 
 pub fn rrca(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[A];
     let carry = rot & 1;
 
@@ -1362,6 +1369,7 @@ pub fn rrca(cpu: &mut CPU) {
 }
 
 pub fn rra(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[A];
     let carry = rot & 0b00000001;
     let prev_carry = cpu.registers[F] & C_FLAG;
@@ -1378,6 +1386,7 @@ pub fn rra(cpu: &mut CPU) {
 }
 
 fn rlc_reg(cpu: &mut CPU, reg: usize) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[reg];
     let carry = rot & 0b10000000;
 
@@ -1418,6 +1427,7 @@ pub fn rlc_l(cpu: &mut CPU) {
 }
 
 pub fn rlc_hlind(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
     let mut rot = cpu.mem.read(dir as usize);
     let carry = rot & 0b10000000;
@@ -1439,6 +1449,7 @@ pub fn rlc_a(cpu: &mut CPU) {
 }
 
 fn rrc_reg(cpu: &mut CPU, reg: usize) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[reg];
     let carry = rot & 1;
 
@@ -1479,6 +1490,7 @@ pub fn rrc_l(cpu: &mut CPU) {
 }
 
 pub fn rrc_hlind(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
     let mut rot = cpu.mem.read(dir as usize);
     let carry = rot & 1;
@@ -1500,6 +1512,7 @@ pub fn rrc_a(cpu: &mut CPU) {
 }
 
 fn rl_reg(cpu: &mut CPU, reg: usize) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[reg];
     let carry = rot & 0b10000000;
     let prev_carry = cpu.registers[F] & C_FLAG;
@@ -1541,6 +1554,7 @@ pub fn rl_l(cpu: &mut CPU) {
 }
 
 pub fn rl_hlind(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
     let mut rot = cpu.mem.read(dir as usize);
     let carry = rot & 0b10000000;
@@ -1563,6 +1577,7 @@ pub fn rl_a(cpu: &mut CPU) {
 }
 
 fn rr_reg(cpu: &mut CPU, reg: usize) {
+    // TODO es posible que esto este mal
     let mut rot = cpu.registers[reg];
     let carry = rot & 0b00000001;
     let prev_carry = cpu.registers[F] & C_FLAG;
@@ -1604,6 +1619,7 @@ pub fn rr_l(cpu: &mut CPU) {
 }
 
 pub fn rr_hlind(cpu: &mut CPU) {
+    // TODO es posible que esto este mal
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
     let mut rot = cpu.mem.read(dir as usize);
     let carry = rot & 0b00000001;
@@ -1627,6 +1643,7 @@ pub fn rr_a(cpu: &mut CPU) {
 }
 
 fn sla_reg(cpu: &mut CPU, reg: usize) {
+    // TODO Esto esta mal
     let rot = cpu.registers[reg].overflowing_shl(1);
     cpu.registers[reg] = rot.0;
 
@@ -1662,6 +1679,7 @@ pub fn sla_l(cpu: &mut CPU) {
 }
 
 pub fn sla_hlind(cpu: &mut CPU) {
+    // TODO Esto esta mal
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
     let rot = cpu.mem.read(dir).overflowing_shl(1);
     cpu.mem.write(dir, rot.0);
@@ -1678,12 +1696,13 @@ pub fn sla_a(cpu: &mut CPU) {
 }
 
 fn sra_reg(cpu: &mut CPU, reg: usize) {
-    let rot = cpu.registers[reg].overflowing_shr(1);
+    let rot = cpu.registers[reg].wrapping_shr(1);
     let msb = cpu.registers[reg] & 0b1000000; 
-    cpu.registers[reg] = rot.0 | msb;
 
-    set_flags(cpu, C_FLAG, rot.1);
-    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, C_FLAG, cpu.registers[reg] & 0b00000001 == 0b00000001);
+
+    cpu.registers[reg] = rot | msb;
+    set_flags(cpu, Z_FLAG, cpu.registers[reg] == 0);
     set_flags(cpu, N_FLAG | H_FLAG, false);
 
     cpu.cycles += 8;
@@ -1715,14 +1734,17 @@ pub fn sra_l(cpu: &mut CPU) {
 
 pub fn sra_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let rot = cpu.mem.read(dir).overflowing_shr(1);
+    let rot = cpu.mem.read(dir).wrapping_shr(1);
     let msb = cpu.mem.read(dir) & 0b1000000; 
-    cpu.mem.write(dir, rot.0 | msb);
+    
 
-    set_flags(cpu, C_FLAG, rot.1);
-    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, C_FLAG, cpu.mem.read(dir) & 0b00000001 == 0b00000001);
+
+    cpu.mem.write(dir, rot | msb);
+    set_flags(cpu, Z_FLAG, cpu.mem.read(dir) == 0);
     set_flags(cpu, N_FLAG | H_FLAG, false);
 
+    
     cpu.cycles += 16;
 }
 
@@ -1767,13 +1789,13 @@ pub fn swap_l(cpu: &mut CPU) {
 
 pub fn swap_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let rot = cpu.mem.read(dir).overflowing_shr(1);
-    let msb = cpu.mem.read(dir) & 0b1000000; 
-    cpu.mem.write(dir, rot.0 | msb);
 
-    set_flags(cpu, C_FLAG, rot.1);
-    set_flags(cpu, Z_FLAG, rot.0 == 0);
-    set_flags(cpu, N_FLAG | H_FLAG, false);
+    let upper = cpu.mem.read(dir) & 0xF0;
+    let lower = cpu.mem.read(dir) & 0x0F;
+    cpu.mem.write(dir, (upper >> 4) + (lower << 4));
+
+    set_flags(cpu, Z_FLAG, cpu.mem.read(dir) == 0);
+    set_flags(cpu, N_FLAG | H_FLAG | C_FLAG, false);
 
     cpu.cycles += 16;
 }
@@ -1783,12 +1805,12 @@ pub fn swap_a(cpu: &mut CPU) {
 }
 
 fn srl_reg(cpu: &mut CPU, reg: usize) {
-    let rot = cpu.registers[reg].overflowing_shr(1);
-    cpu.registers[reg] = rot.0;
+    let rot = cpu.registers[reg].wrapping_shr(1);
 
-    set_flags(cpu, C_FLAG, rot.1);
-    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, C_FLAG, cpu.registers[reg] & 0b10000000 == 0b10000000);
+    set_flags(cpu, Z_FLAG, rot == 0);
     set_flags(cpu, N_FLAG | H_FLAG, false);
+    cpu.registers[reg] = rot;
 
     cpu.cycles += 8;
 }
@@ -1819,12 +1841,14 @@ pub fn srl_l(cpu: &mut CPU) {
 
 pub fn srl_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let rot = cpu.mem.read(dir).overflowing_shr(1);
-    cpu.mem.write(dir, rot.0);
+    let rot = cpu.mem.read(dir).wrapping_shr(1);
+    
 
-    set_flags(cpu, C_FLAG, rot.1);
-    set_flags(cpu, Z_FLAG, rot.0 == 0);
+    set_flags(cpu, C_FLAG, cpu.mem.read(dir) & 0b10000000 == 0b10000000);
+    set_flags(cpu, Z_FLAG, rot == 0);
     set_flags(cpu, N_FLAG | H_FLAG, false);
+
+    cpu.mem.write(dir, rot);
 
     cpu.cycles += 16;
 }
@@ -2807,6 +2831,12 @@ pub fn jp_u16(cpu: &mut CPU) {
     let pc_high = cpu.fetch() as usize;
     cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
     cpu.cycles += 16;
+}
+
+pub fn jp_hl(cpu: &mut CPU) {
+    let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
+    cpu.pc = dir;
+    cpu.cycles += 4;
 }
 
 fn call_flag_u16(cpu: &mut CPU, flag: bool) {
