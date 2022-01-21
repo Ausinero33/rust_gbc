@@ -7,7 +7,7 @@ fn main() {
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms\\individual\\01-special.gb");
+    cpu.mem.load_rom("roms\\individual\\03-op sp,hl.gb");
 
     let c: u8 = 0b11111111;
     let _d = c.wrapping_shr(1); 
@@ -21,7 +21,7 @@ fn main() {
             cpu.mem.write(0xff02 as usize, 0);
         }
 
-        if cpu.pc == 0xC067 {
+        if cpu.op == 0xCB {
             let _a = 0;
         }
 

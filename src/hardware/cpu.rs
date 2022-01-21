@@ -25,9 +25,6 @@ pub struct CPU {
     pub ime: bool,
     pub ime_temp: bool,
 
-    // Variable para comprobar si la siguiente instruccion es CB
-    pub cb_next: bool,
-
     pub op: u8,
 
     inst_set: [fn(&mut CPU); 0x100],
@@ -48,8 +45,6 @@ impl CPU {
             cycles_di_ie: 0,
             ime: false,
             ime_temp: false,
-
-            cb_next: false,
 
             op: 0,
 
@@ -121,18 +116,17 @@ impl CPU {
         val
     }
 
+    pub fn decode_cb(&mut self, op: u8) {
+        self.cb_set[op as usize](self);
+    }
+
     fn decode_execute(&mut self, op: u8) {
         self.op = op;
         if self.cycles_di_ie > 0 {
             self.cycles_di_ie += 1;
         }
 
-        if !self.cb_next {
-            self.inst_set[op as usize](self);
-        } else {
-            self.cb_set[op as usize](self);
-            self.cb_next = false;
-        }
+        self.inst_set[op as usize](self);
 
         if self.cycles_di_ie == 2 {
             self.ime = self.ime_temp;
