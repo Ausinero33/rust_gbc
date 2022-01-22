@@ -1142,10 +1142,13 @@ pub fn adc_a_u8(cpu: &mut CPU) {
     let val = cpu.fetch();
     let cy = get_carry(cpu);
     set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], val, cy));
-    let x = cpu.registers[A].overflowing_add(val.wrapping_add(cy));
+
+    let x_temp = cpu.registers[A].overflowing_add(val);
+    let x = x_temp.0.overflowing_add(cy);
+
     cpu.registers[A] = x.0;
     set_flags(cpu, Z_FLAG, x.0 == 0);
-    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, C_FLAG, x.1 | x_temp.1);
     set_flags(cpu, N_FLAG, false);
     cpu.cycles += 8;
 }
@@ -1165,10 +1168,13 @@ pub fn sbc_a_u8(cpu: &mut CPU) {
     let val = cpu.fetch();
     let cy = get_carry(cpu);
     set_flags(cpu, H_FLAG, check_half_borrow_cy(cpu.registers[A], val, cy));
-    let x = cpu.registers[A].overflowing_sub(val.wrapping_sub(cy));
+
+    let x_temp = cpu.registers[A].overflowing_sub(val);
+    let x = x_temp.0.overflowing_sub(cy);
+
     cpu.registers[A] = x.0;
     set_flags(cpu, Z_FLAG, x.0 == 0);
-    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, C_FLAG, x.1 | x_temp.1);
     set_flags(cpu, N_FLAG, true);
     cpu.cycles += 8;
 }
@@ -1263,7 +1269,7 @@ pub fn dec_sp(cpu: &mut CPU) {
 }
 
 fn add_hl_regx(cpu: &mut CPU, regx_src: usize) {
-    let dest = cpu.registers[H] as u16 + cpu.registers[L] as u16 * 0x100;
+    let dest = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
     let src = cpu.registers[regx_src] as u16 + cpu.registers[regx_src - 1] as u16 * 0x100;
 
     set_flags(cpu, H_FLAG, (dest & 0x0FFF) + (src & 0x0FFF) > 0x0FFF);
@@ -1300,32 +1306,26 @@ pub fn add_hl_sp(cpu: &mut CPU) {
 }
 
 pub fn add_sp_i8(cpu: &mut CPU) {
-    let val = cpu.fetch() as i8;
-    let src = cpu.sp as i16;
-
-    set_flags(cpu, H_FLAG, check_half_carry(val as u8, src as u8));
-    
-    let x = src.overflowing_add(val as i16);
-    cpu.sp = x.0 as u16;
-
-    set_flags(cpu, Z_FLAG | N_FLAG, false);
-    set_flags(cpu, C_FLAG, x.1);
-
+    let val = cpu.fetch() as i8 as i16 as u16;
+    set_flags(cpu, N_FLAG | Z_FLAG, false);
+    set_flags(cpu, H_FLAG, check_half_carry(cpu.sp as u8, val as u8));
+    set_flags(cpu, C_FLAG, (cpu.sp & 0x00FF) + (val & 0x00FF) > 0x00FF);
+    cpu.sp = cpu.sp.wrapping_add(val);
     cpu.cycles += 16;
 }
 
 pub fn ld_hl_sp_i8(cpu: &mut CPU) {
-    let val = cpu.fetch() as i8;
-    let src = cpu.sp as i16;
+    let val = cpu.fetch() as i8 as i16 as u16;
+    let src = cpu.sp;
     
     set_flags(cpu, H_FLAG, check_half_carry(val as u8, src as u8));
 
-    let x = src.overflowing_add(val as i16);
-    cpu.registers[L] = x.0 as u8;
-    cpu.registers[H] = (x.0 as u16 / 0x100) as u8;
+    let x = src.wrapping_add(val);
+    cpu.registers[L] = x as u8;
+    cpu.registers[H] = (x as u16 / 0x100) as u8;
 
     set_flags(cpu, Z_FLAG | N_FLAG, false);
-    set_flags(cpu, C_FLAG, x.1);
+    set_flags(cpu, C_FLAG, (cpu.sp & 0x00FF) + (val & 0x00FF) > 0x00FF);
 
     cpu.cycles += 12;
 }
@@ -2911,7 +2911,7 @@ fn rst_dir(cpu: &mut CPU, dir: u8) {
     cpu.sp = cpu.sp.wrapping_sub(1);
     cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
 
-    cpu.pc = cpu.pc.wrapping_add(dir as u16);
+    cpu.pc = dir as u16;
     cpu.cycles += 16;
 }
 
