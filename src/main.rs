@@ -7,7 +7,7 @@ fn main() {
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms\\individual\\09-op r,r.gb");
+    cpu.mem.load_rom("roms\\individual\\02-interrupts.gb");
 
     loop {
         cpu.cycle();

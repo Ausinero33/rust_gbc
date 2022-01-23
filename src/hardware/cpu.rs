@@ -21,9 +21,9 @@ pub struct CPU {
     pub halt: bool,
 
     // Variables utilizada para activar o desactivar interrupciones depues de EI/DI
-    pub cycles_di_ie: u8,
+    pub cycles_di: u8,
+    pub cycles_ei: u8,
     pub ime: bool,
-    pub ime_temp: bool,
 
     pub op: u8,
 
@@ -42,9 +42,9 @@ impl CPU {
             stop: false,
             halt: false,
 
-            cycles_di_ie: 0,
+            cycles_di: 0,
+            cycles_ei: 0,
             ime: false,
-            ime_temp: false,
 
             op: 0,
 
@@ -106,8 +106,17 @@ impl CPU {
     }
 
     pub fn cycle(&mut self) {
-        let op = self.fetch();
-        self.decode_execute(op);
+        self.update_ime();
+
+        // TODO aqui se manejan las interrupciones
+        self.handle_interrupts();
+
+        if self.halt {
+            nop(self);
+        } else {
+            let op = self.fetch();
+            self.decode_execute(op);
+        }
     }
 
     pub fn fetch(&mut self) -> u8 {
@@ -122,15 +131,23 @@ impl CPU {
 
     fn decode_execute(&mut self, op: u8) {
         self.op = op;
-        if self.cycles_di_ie > 0 {
-            self.cycles_di_ie += 1;
-        }
-
         self.inst_set[op as usize](self);
+    }
 
-        if self.cycles_di_ie == 2 {
-            self.ime = self.ime_temp;
-            self.cycles_di_ie = 0;
-        }
+    fn update_ime(&mut self) {
+        self.cycles_di = match self.cycles_di {
+            2 => 1,
+            1 => {self.ime = false; 0},
+            _ => 0,
+        };
+        self.cycles_ei = match self.cycles_ei {
+            2 => 1,
+            1 => {self.ime = true; 0},
+            _ => 0,
+        };
+    }
+
+    fn handle_interrupts(&mut self) {
+        self.halt = false;
     }
 }
