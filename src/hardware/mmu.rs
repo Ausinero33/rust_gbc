@@ -50,11 +50,25 @@ impl MMU {
     }
 
     pub fn write(&mut self, dir: usize, val: u8) {
+        if dir == 0xFF04 {
+            self.memory[dir] = 0;
+            return;
+        }
         self.memory[dir] = val;
     }
 
     pub fn load_rom(&mut self, dir: &str) {
         let mut file = BufReader::new(File::open(dir).unwrap());
         file.read_exact(&mut self.memory[0..0x8000]).unwrap();
+    }
+
+    pub fn increase_div(&mut self) {
+        self.memory[0xFF04] = self.memory[0xFF04].wrapping_add(1);
+    }
+
+    pub fn increase_tima(&mut self) -> bool {
+        let val = self.memory[0xFF05].overflowing_add(1);
+        self.memory[0xFF05] = val.0;
+        val.1
     }
 }

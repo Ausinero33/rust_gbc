@@ -11,6 +11,15 @@ const E: usize = 5;
 const H: usize = 6;
 const L: usize = 7;
 
+// Interrupciones
+const VBLANK: u8 = 0;
+const LCDSTART: u8 = 1;
+const TIMER: u8 = 2;
+const SERIAL: u8 = 3;
+const JOYPAD: u8 = 4;
+
+const FREQ: u32 = 4194304;
+
 pub struct CPU {
     pub registers: [u8; 8],
     pub pc: u16,
@@ -26,6 +35,10 @@ pub struct CPU {
     pub ime: bool,
 
     pub op: u8,
+
+    div_timer: u32,
+
+    tima_timer: u32,
 
     inst_set: [fn(&mut CPU); 0x100],
     cb_set: [fn(&mut CPU); 0x100],
@@ -47,6 +60,9 @@ impl CPU {
             ime: false,
 
             op: 0,
+            div_timer: 0,
+
+            tima_timer: 0,
 
             inst_set: [
 //              0x_0            0x_1            0x_2            0x_3            0x_4            0x_5            0x_6            0x_7            0x_8            0x_9            0x_A            0x_B            0x_C            0x_D            0x_E            0x_F        
@@ -108,8 +124,7 @@ impl CPU {
     pub fn cycle(&mut self) {
         self.update_ime();
 
-        // TODO aqui se manejan las interrupciones
-        self.handle_interrupts();
+        self.interrupt();
 
         if self.halt {
             nop(self);
@@ -117,6 +132,8 @@ impl CPU {
             let op = self.fetch();
             self.decode_execute(op);
         }
+
+        self.update_timers();
     }
 
     pub fn fetch(&mut self) -> u8 {
@@ -147,7 +164,110 @@ impl CPU {
         };
     }
 
-    fn handle_interrupts(&mut self) {
+    fn get_ie(&mut self) -> u8 {
+        self.cycles += 4;
+        self.mem.read(0xFFFF)
+    }
+
+    fn get_if(&mut self) -> u8 {
+        self.cycles += 4;
+        self.mem.read(0xFF0F)
+    }
+
+    pub fn set_if(&mut self, int: usize, cond: bool) {
+        let flag: u8 = 1 << int;
+        if cond {
+            let if_reg = self.get_if();
+            self.mem.write(0xFF0F, if_reg | flag);
+        } else {
+            let if_reg = self.get_if();
+            self.mem.write(0xFF0F, if_reg & !flag);
+        }
+    }
+
+    fn interrupt(&mut self) {
+        if !self.ime {
+            if self.get_ie() & self.get_if() != 0 {
+                self.halt = false;
+            }
+            return;
+        }
+
         self.halt = false;
+
+        for i in 0..5 {
+            let int_f = self.get_if() >> i;
+            let int_e = self.get_ie() >> i;
+
+            let int = (int_f & 0x01) & (int_e & 0x01);
+            // Si hay interrupcion
+            if int == 1 {
+                self.ime = false;
+                self.set_if(i, false);
+                self.interrupt_handler(i);
+                return;
+            }
+        }
+    }
+
+    fn interrupt_handler(&mut self, int: usize) {
+        let int_offset: [u16; 5] = [0x0, 0x8, 0x10, 0x18, 0x20];
+
+        // 2 NOPS
+        nop(self);
+        nop(self);
+
+        // Llevar PC a la pila
+        self.sp = self.sp.wrapping_sub(1);
+        self.mem.write(self.sp as usize, (self.pc / 0x100) as u8);
+        self.sp = self.sp.wrapping_sub(1);
+        self.mem.write(self.sp as usize, self.pc as u8);
+
+        // Tratar interrupcion
+        self.pc = 0x40 + int_offset[int];
+    }
+
+    fn update_timers(&mut self) {
+        if (self.cycles / 256) as u32 > self.div_timer {
+            self.div_timer = (self.cycles / 256) as u32;
+            self.mem.increase_div();
+        }
+
+        let tac = self.mem.read(0xFF07);
+        let timer_enable = (tac & 0b00000100) != 0;
+
+        // TODO si al final hago la CGB, hay que dividir esto entre la velocidad (1 o 2, dependiendo de la seleccionada)
+        let tima_freq_divider = match tac & 0b00000011 {
+            0x00 => 1024,
+            0x01 => 16,
+            0x10 => 64,
+            0x11 => 256,
+            _ => 0
+        };
+
+        if (self.cycles / tima_freq_divider) as u32 > self.tima_timer && timer_enable {
+            self.tima_timer = (self.cycles / tima_freq_divider) as u32;
+            let tima_int = self.mem.increase_tima();
+
+            if tima_int {
+                let tma = self.mem.read(0xFF06);
+                self.mem.write(0xFF05, tma);
+                self.set_int(TIMER);
+            }
+        }
+    }
+
+    fn set_int(&mut self, int: u8) {
+        let mut int_f = self.get_if();
+        match int {
+            0 => int_f |= 0b00000001,
+            1 => int_f |= 0b00000010,
+            2 => int_f |= 0b00000100,
+            3 => int_f |= 0b00001000,
+            4 => int_f |= 0b00010000,
+            _ => panic!("Interrupción erronea")
+        }
+
+        self.mem.write(0xFF0F, int_f);
     }
 }
