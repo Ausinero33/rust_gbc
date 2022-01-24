@@ -2892,9 +2892,10 @@ pub fn call_u16(cpu: &mut CPU) {
 
 fn rst_dir(cpu: &mut CPU, dir: u8) {
     cpu.sp = cpu.sp.wrapping_sub(1);
-    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
-    cpu.sp = cpu.sp.wrapping_sub(1);
     cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
+    
 
     cpu.pc = dir as u16;
     cpu.cycles += 16;

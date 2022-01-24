@@ -7,7 +7,7 @@ fn main() {
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms/individual/02-interrupts.gb");
+    cpu.mem.load_rom("roms/individual/07-jr,jp,call,ret,rst.gb");
 
     loop {
         cpu.cycle();
