@@ -1,13 +1,13 @@
 mod hardware;
 
-use hardware::cpu::{CPU};
+use hardware::cpu::CPU;
 
 fn main() {
     let mut cpu = CPU::new();
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms/individual/07-jr,jp,call,ret,rst.gb");
+    cpu.mem.load_rom("roms/individual/01-special.gb");
 
     loop {
         cpu.cycle();

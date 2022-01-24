@@ -672,30 +672,22 @@ pub fn dec_a(cpu: &mut CPU) {
 }
 
 pub fn daa(cpu: &mut CPU) {
-    let mut val = cpu.registers[A] as u16;
-
-    if get_negative(cpu) == 0 {
-        if get_half_carry(cpu) == 1 || val & 0x0F > 0x09 {
-            val += 0x06;
-        }
-        if get_carry(cpu) == 1 || val > 0x99 {
-            val += 0x60;
-            set_flags(cpu, C_FLAG, true);
-        }
+    let mut a = cpu.registers[A];
+    let mut adjust = if get_carry(cpu) != 0 { 0x60 } else { 0x00 };
+    if get_half_carry(cpu) != 0 { adjust |= 0x06; };
+    if !(get_negative(cpu) != 0) {
+        if a & 0x0F > 0x09 { adjust |= 0x06; };
+        if a > 0x99 { adjust |= 0x60; };
+        a = a.wrapping_add(adjust);
     } else {
-        if get_half_carry(cpu) == 1 {
-			val = val.wrapping_sub(0x06);
-		}
-
-		if get_carry(cpu) == 1 {
-			val = val.wrapping_sub(0x60);
-            set_flags(cpu, C_FLAG, true);
-		}
+        a = a.wrapping_sub(adjust);
     }
 
-    set_flags(cpu, Z_FLAG, val == 0);
+    set_flags(cpu, C_FLAG, adjust >= 0x60);
     set_flags(cpu, H_FLAG, false);
-    cpu.registers[A] = val as u8;
+    set_flags(cpu, Z_FLAG, a == 0);
+    
+    cpu.registers[A] = a;
     cpu.cycles += 4;
 }
 
