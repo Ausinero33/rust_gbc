@@ -7,7 +7,8 @@ fn main() {
 
     cpu.reset();
 
-    cpu.mem.load_rom("roms/individual/01-special.gb");
+    //cpu.mem.load_rom("roms/individual/01-special.gb");
+    cpu.mem.load_rom("roms/Dr. Mario (World).gb");
 
     loop {
         cpu.cycle();
