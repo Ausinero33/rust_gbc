@@ -1,19 +1,25 @@
 mod hardware;
 
-use hardware::cpu::CPU;
+use hardware::{cpu::CPU, GameBoy, bus::Bus};
 
 fn main() {
-    let mut cpu = CPU::new();
+    //let mut cpu = CPU::new();
 
-    cpu.reset();
+    //cpu.reset();
 
-    //cpu.mem.load_rom("roms/individual/01-special.gb");
-    cpu.mem.load_rom("roms/Dr. Mario (World).gb");
+    //cpu.bus.load_rom("roms/individual/01-special.gb");
+    //cpu.bus.load_rom("roms/Dr. Mario (World).gb");
+
+    let mut gameboy = GameBoy::new(Bus::new());
+
+    gameboy.reset();
+
+    gameboy.load_rom("roms/Dr. Mario (World).gb");
 
     loop {
-        cpu.cycle();
+        gameboy.cpu.cycle();
 
-        output_temp(&mut cpu);
+        output_temp(&mut gameboy.cpu);
 
         // if cpu.stop {
         //     // TODO casi seguro que esto no es asi
@@ -23,9 +29,9 @@ fn main() {
 }
 
 fn output_temp(cpu: &mut CPU) {
-    if cpu.mem.read(0xff02 as usize) == 0x81 {
-        let c = cpu.mem.read(0xff01 as usize);
+    if cpu.bus.read(0xff02 as usize) == 0x81 {
+        let c = cpu.bus.read(0xff01 as usize);
         print!("{}", char::from(c));
-        cpu.mem.write(0xff02 as usize, 0);
+        cpu.bus.write(0xff02 as usize, 0);
     }
 }
