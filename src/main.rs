@@ -1,37 +1,50 @@
 mod hardware;
 
-use hardware::{cpu::CPU, GameBoy, bus::Bus};
+use hardware::{GameBoy, bus::Bus};
+use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
 fn main() {
-    //let mut cpu = CPU::new();
-
-    //cpu.reset();
-
-    //cpu.bus.load_rom("roms/individual/01-special.gb");
-    //cpu.bus.load_rom("roms/Dr. Mario (World).gb");
+    let mut window = RenderWindow::new(
+        (160, 144),
+        "GameBoy",
+        Style::CLOSE,
+        &Default::default(),
+    );
+    window.set_framerate_limit(60);
 
     let mut gameboy = GameBoy::new(Bus::new());
 
-    gameboy.reset();
+    let roms = [
+        "roms/individual/01-special.gb",
+        "roms/individual/02-interrupts.gb",
+        "roms/individual/03-op sp,hl.gb",
+        "roms/individual/04-op r,imm.gb",
+        "roms/individual/05-op rp.gb",
+        "roms/individual/06-ld r,r.gb",
+        "roms/individual/07-jr,jp,call,ret,rst.gb",
+        "roms/individual/08-misc instrs.gb",
+        "roms/individual/09-op r,r.gb",
+        "roms/individual/10-bit ops.gb",
+        "roms/individual/11-op a,(hl).gb"
+    ];
 
-    gameboy.load_rom("roms/Dr. Mario (World).gb");
-
-    loop {
-        gameboy.cpu.cycle();
-
-        output_temp(&mut gameboy.cpu);
-
-        // if cpu.stop {
-        //     // TODO casi seguro que esto no es asi
-        //     break;
-        // }
-    }
-}
-
-fn output_temp(cpu: &mut CPU) {
-    if cpu.bus.read(0xff02 as usize) == 0x81 {
-        let c = cpu.bus.read(0xff01 as usize);
-        print!("{}", char::from(c));
-        cpu.bus.write(0xff02 as usize, 0);
+    for i in 0..11 {
+        gameboy.load_rom(roms[i]);
+        gameboy.reset();
+    
+        'inner: loop {
+            while let Some(event) = window.poll_event() {
+                match event {
+                    Event::Closed | Event::KeyPressed {
+                        code: Key::ESCAPE, ..
+                    } => break 'inner,
+                    _ => {}
+                }
+            }
+    
+            gameboy.cycle();
+            window.clear(Color::BLACK);
+            window.display()
+        }
     }
 }
