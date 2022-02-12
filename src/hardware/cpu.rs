@@ -18,14 +18,12 @@ const TIMER: u8 = 2;
 const SERIAL: u8 = 3;
 const JOYPAD: u8 = 4;
 
-const FREQ: u32 = 4194304;
-
 pub struct CPU {
     pub registers: [u8; 8],
     pub pc: u16,
     pub sp: u16,
-    pub mem: MMU,
-    pub cycles: u64,
+    //pub mem: MMU,
+    pub cycles: u32,
     pub stop: bool,
     pub halt: bool,
 
@@ -40,8 +38,8 @@ pub struct CPU {
 
     tima_timer: u32,
 
-    inst_set: [fn(&mut CPU); 0x100],
-    cb_set: [fn(&mut CPU); 0x100],
+    inst_set: [fn(&mut CPU, &mut MMU); 0x100],
+    cb_set: [fn(&mut CPU, &mut MMU); 0x100],
 }
 
 impl CPU {
@@ -50,7 +48,7 @@ impl CPU {
             registers: [0x00; 8],
             pc: 0x0000,
             sp: 0x0000,
-            mem: MMU::new(),
+            //mem: MMU::new(),
             cycles: 0,
             stop: false,
             halt: false,
@@ -117,38 +115,38 @@ impl CPU {
         self.registers[L] = 0x4D;
 
         self.sp = 0xFFFE;
-        self.mem.reset();
         self.pc = 0x100;
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self, mmu: &mut MMU) {
         self.update_ime();
 
-        self.interrupt();
+        self.interrupt(mmu);
 
         if self.halt {
-            nop(self);
+            nop(self, mmu);
         } else {
-            let op = self.fetch();
-            self.decode_execute(op);
+            let op = self.fetch(mmu);
+            self.decode_execute(op, mmu);
         }
 
-        self.update_timers();
+        self.update_timers(mmu);
+        self.cycles = 0;
     }
 
-    pub fn fetch(&mut self) -> u8 {
-        let val = self.mem.read(self.pc as usize);
+    pub fn fetch(&mut self, mmu: &mut MMU) -> u8 {
+        let val = mmu.read(self.pc as usize);
         self.pc = self.pc.wrapping_add(1);
         val
     }
 
-    pub fn decode_cb(&mut self, op: u8) {
-        self.cb_set[op as usize](self);
+    pub fn decode_cb(&mut self, op: u8, mmu: &mut MMU) {
+        self.cb_set[op as usize](self, mmu);
     }
 
-    fn decode_execute(&mut self, op: u8) {
+    fn decode_execute(&mut self, op: u8, mmu: &mut MMU) {
         self.op = op;
-        self.inst_set[op as usize](self);
+        self.inst_set[op as usize](self, mmu);
     }
 
     fn update_ime(&mut self) {
@@ -164,30 +162,30 @@ impl CPU {
         };
     }
 
-    fn get_ie(&mut self) -> u8 {
-        self.cycles += 4;
-        self.mem.read(0xFFFF)
+    fn get_ie(&mut self, mmu: &mut MMU) -> u8 {
+        self.cycles = 4;
+        mmu.read(0xFFFF)
     }
 
-    fn get_if(&mut self) -> u8 {
-        self.cycles += 4;
-        self.mem.read(0xFF0F)
+    fn get_if(&mut self, mmu: &mut MMU) -> u8 {
+        self.cycles = 4;
+        mmu.read(0xFF0F)
     }
 
-    pub fn set_if(&mut self, int: usize, cond: bool) {
+    pub fn set_if(&mut self, int: usize, cond: bool, mmu: &mut MMU) {
         let flag: u8 = 1 << int;
         if cond {
-            let if_reg = self.get_if();
-            self.mem.write(0xFF0F, if_reg | flag);
+            let if_reg = self.get_if(mmu);
+            mmu.write(0xFF0F, if_reg | flag);
         } else {
-            let if_reg = self.get_if();
-            self.mem.write(0xFF0F, if_reg & !flag);
+            let if_reg = self.get_if(mmu);
+            mmu.write(0xFF0F, if_reg & !flag);
         }
     }
 
-    fn interrupt(&mut self) {
+    fn interrupt(&mut self, mmu: &mut MMU) {
         if !self.ime {
-            if self.get_ie() & self.get_if() != 0 {
+            if self.get_ie(mmu) & self.get_if(mmu) != 0 {
                 self.halt = false;
             }
             return;
@@ -196,44 +194,47 @@ impl CPU {
         self.halt = false;
 
         for i in 0..5 {
-            let int_f = self.get_if() >> i;
-            let int_e = self.get_ie() >> i;
+            let int_f = self.get_if(mmu) >> i;
+            let int_e = self.get_ie(mmu) >> i;
 
             let int = (int_f & 0x01) & (int_e & 0x01);
             // Si hay interrupcion
             if int == 1 {
                 self.ime = false;
-                self.set_if(i, false);
-                self.interrupt_handler(i);
+                self.set_if(i, false, mmu);
+                self.interrupt_handler(i, mmu);
                 return;
             }
         }
     }
 
-    fn interrupt_handler(&mut self, int: usize) {
+    fn interrupt_handler(&mut self, int: usize, mmu: &mut MMU) {
         let int_offset: [u16; 5] = [0x0, 0x8, 0x10, 0x18, 0x20];
 
         // 2 NOPS
-        nop(self);
-        nop(self);
+        nop(self, mmu);
+        nop(self, mmu);
 
         // Llevar PC a la pila
         self.sp = self.sp.wrapping_sub(1);
-        self.mem.write(self.sp as usize, (self.pc / 0x100) as u8);
+        mmu.write(self.sp as usize, (self.pc / 0x100) as u8);
         self.sp = self.sp.wrapping_sub(1);
-        self.mem.write(self.sp as usize, self.pc as u8);
+        mmu.write(self.sp as usize, self.pc as u8);
 
         // Tratar interrupcion
         self.pc = 0x40 + int_offset[int];
     }
 
-    fn update_timers(&mut self) {
-        if (self.cycles / 256) as u32 > self.div_timer {
-            self.div_timer = (self.cycles / 256) as u32;
-            self.mem.increase_div();
+    fn update_timers(&mut self, mmu: &mut MMU) {
+        self.div_timer += self.cycles;
+        self.tima_timer += self.cycles;
+
+        if self.div_timer / 256 > 0 {
+            self.div_timer %= 256;
+            mmu.increase_div();
         }
 
-        let tac = self.mem.read(0xFF07);
+        let tac = mmu.read(0xFF07);
         let timer_enable = (tac & 0b00000100) != 0;
 
         // TODO si al final hago la CGB, hay que dividir esto entre la velocidad (1 o 2, dependiendo de la seleccionada)
@@ -245,20 +246,20 @@ impl CPU {
             _ => 0
         };
 
-        if (self.cycles / tima_freq_divider) as u32 > self.tima_timer && timer_enable {
-            self.tima_timer = (self.cycles / tima_freq_divider) as u32;
-            let tima_int = self.mem.increase_tima();
+        if self.tima_timer / tima_freq_divider > 0 && timer_enable {
+            self.tima_timer %= tima_freq_divider;
+            let tima_int = mmu.increase_tima();
 
             if tima_int {
-                let tma = self.mem.read(0xFF06);
-                self.mem.write(0xFF05, tma);
-                self.set_int(TIMER);
+                let tma = mmu.read(0xFF06);
+                mmu.write(0xFF05, tma);
+                self.set_int(TIMER, mmu);
             }
         }
     }
 
-    fn set_int(&mut self, int: u8) {
-        let mut int_f = self.get_if();
+    fn set_int(&mut self, int: u8, mmu: &mut MMU) {
+        let mut int_f = self.get_if(mmu);
         match int {
             0 => int_f |= 0b00000001,
             1 => int_f |= 0b00000010,
@@ -268,6 +269,6 @@ impl CPU {
             _ => panic!("Interrupción erronea")
         }
 
-        self.mem.write(0xFF0F, int_f);
+        mmu.write(0xFF0F, int_f);
     }
 }

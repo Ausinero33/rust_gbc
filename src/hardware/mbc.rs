@@ -34,7 +34,7 @@ impl MbcController for MBC1 {
     fn new<>(rom: &[u8]) -> Self {
         MBC1 {
             rom: rom.to_vec(),
-            rom_bank_number: 1,
+            rom_bank_number: 0,
             ram_enable: false,
             banking_mode: 0,
         }
