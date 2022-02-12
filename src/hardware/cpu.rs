@@ -106,7 +106,7 @@ impl CPU {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, enable_boot_rom: bool) {
         self.registers[A] = 0x01;
         self.registers[F] = 0x80;
         self.registers[B] = 0x00;
@@ -117,12 +117,16 @@ impl CPU {
         self.registers[L] = 0x4D;
 
         self.sp = 0xFFFE;
-        self.pc = 0x100;
+        if !enable_boot_rom {
+            self.pc = 0x100;
+        }
         self.bus.reset();
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> u64{
         self.update_ime();
+
+        let cycles_temp = self.cycles;
 
         self.interrupt();
 
@@ -134,6 +138,8 @@ impl CPU {
         }
 
         self.update_timers();
+
+        return self.cycles - cycles_temp;
     }
 
     pub fn fetch(&mut self) -> u8 {

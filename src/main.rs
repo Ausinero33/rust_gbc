@@ -12,7 +12,7 @@ fn main() {
     );
     window.set_framerate_limit(60);
 
-    let mut gameboy = GameBoy::new(Bus::new());
+    let mut gameboy = GameBoy::new(Bus::new(), false);
 
     let roms = [
         "roms/individual/01-special.gb",
@@ -29,10 +29,11 @@ fn main() {
     ];
 
     for i in 0..11 {
-        gameboy.load_rom(roms[i]);
         gameboy.reset();
+        gameboy.load_rom(roms[i]);
     
         'inner: loop {
+            // Controlar si se sale
             while let Some(event) = window.poll_event() {
                 match event {
                     Event::Closed | Event::KeyPressed {
@@ -47,4 +48,24 @@ fn main() {
             window.display()
         }
     }
+
+    // gameboy.reset();
+    // gameboy.load_rom("roms/Dr. Mario (World).gb");
+
+
+    // 'inner: loop {
+    //     //Controlar si se sale
+    //     while let Some(event) = window.poll_event() {
+    //         match event {
+    //             Event::Closed | Event::KeyPressed {
+    //                 code: Key::ESCAPE, ..
+    //             } => break 'inner,
+    //             _ => {}
+    //         }
+    //     }
+
+    //     gameboy.cycle();
+    //     window.clear(Color::BLACK);
+    //     window.display()
+    // }
 }

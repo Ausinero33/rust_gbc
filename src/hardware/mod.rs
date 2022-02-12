@@ -10,12 +10,14 @@ const FREQ: u32 = 4_194_304;
 
 pub struct GameBoy {
     pub cpu: CPU,
+    enable_boot_rom: bool,
 }
 
 impl GameBoy {
-    pub fn new(bus: Bus) -> Self {
+    pub fn new(bus: Bus, enable_boot_rom: bool) -> Self {
         GameBoy {
-            cpu: CPU::new(bus)
+            cpu: CPU::new(bus.set_enable_boot_rom(enable_boot_rom)),
+            enable_boot_rom: enable_boot_rom,
         }   
     }
 
@@ -33,12 +35,14 @@ impl GameBoy {
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset();
+        self.cpu.reset(self.enable_boot_rom);
     }
 
     pub fn cycle(&mut self) {
         for _i in 0..(FREQ / 60) {
-            self.cpu.cycle();
+            //println!("{:02X}", self.cpu.pc);
+            let cycles_to_run = self.cpu.cycle();
+            self.cpu.bus.cycle(cycles_to_run as u8);
             self.output_temp();
         };
     }
