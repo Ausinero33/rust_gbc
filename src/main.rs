@@ -3,6 +3,21 @@ mod hardware;
 use hardware::{GameBoy, bus::Bus};
 use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
+fn checksum() -> u8 {
+    let mut x: u8 = 0;
+
+    let rom = [0x44, 0x52, 0x2E, 0x4D, 0x41, 0x52, 0x49, 0x4F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00];
+
+    for i in rom {
+        x = x.wrapping_sub(x);
+        x = x.wrapping_sub(i);
+        x = x.wrapping_sub(1);
+
+    };
+
+    x
+}
+
 fn main() {
     let mut window = RenderWindow::new(
         (160, 144),
@@ -11,6 +26,8 @@ fn main() {
         &Default::default(),
     );
     window.set_framerate_limit(60);
+
+    println!("{}", checksum());
 
     let mut gameboy = GameBoy::new(Bus::new(), false);
 
