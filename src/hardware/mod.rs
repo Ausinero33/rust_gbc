@@ -1,3 +1,5 @@
+use sfml::graphics::{Sprite, Texture, Transformable, RenderWindow, RenderTarget};
+
 use self::{cpu::CPU, bus::Bus, mbc::*};
 
 pub mod cpu;
@@ -53,5 +55,13 @@ impl GameBoy {
             print!("{}", char::from(c));
             self.cpu.bus.write(0xff02 as usize, 0);
         }
+    }
+
+    pub fn draw(&self, window: &mut RenderWindow) {
+        let image = self.cpu.bus.ppu.get_image();
+        let texture = Texture::from_image(&image).unwrap();
+        let mut sprite = Sprite::with_texture(&texture);
+        sprite.set_scale((2.0, 2.0));
+        window.draw(&sprite);
     }
 }

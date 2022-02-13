@@ -2,7 +2,7 @@ use super::{mbc::MbcController, ppu::{PPU, PpuRegisters}};
 
 pub struct Bus {
     pub rom: Option<Box<dyn MbcController>>,    // 0x0000 - 0x7FFF
-    ppu: PPU,                                   // 0x8000 - 0x9FFF
+    pub ppu: PPU,                                   // 0x8000 - 0x9FFF
     eram: [u8; 0x2000],                         // 0xA000 - 0xBFFF
     wram: [u8; 0x2000],                         // 0xC000 - 0xDFFF (0xE000 - 0xFDFF)
     hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF

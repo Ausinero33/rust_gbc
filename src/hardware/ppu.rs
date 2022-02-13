@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use sfml::graphics::{Image, Sprite};
+
 type Tile = [[TilePixelValue; 8]; 8];
 
 #[derive(Clone, Copy)]
@@ -49,6 +51,8 @@ pub struct PPU {
     pub regs: PpuRegisters,
 
     background_fifo: VecDeque<TilePixelValue>,
+
+    lcd_pixels: [u8; 144 * 160 * 4],
 }
 
 
@@ -67,6 +71,8 @@ impl PPU {
             regs: PpuRegisters { lcdc: 0, stat: 0, scy: 0, scx: 0, ly: 0, lyc: 0, dma: 0, bgp: 0, obp0: 0, obp1: 0, wy: 0, wx: 0 },
 
             background_fifo: VecDeque::with_capacity(16),
+
+            lcd_pixels: [0xFF; 144 * 160 * 4],
         }
     }
 
@@ -112,6 +118,10 @@ impl PPU {
             };
             self.tile_set[tile_index][row_index][pixel_index] = value;
         }
+    }
+
+    pub fn get_image(&self) -> Image {
+        Image::create_from_pixels(160, 144, &self.lcd_pixels).unwrap()
     }
 
     pub fn cycle(&mut self, cycles: u8) {

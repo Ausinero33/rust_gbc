@@ -1,7 +1,7 @@
 mod hardware;
 
 use hardware::{GameBoy, bus::Bus};
-use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
+use sfml::{graphics::{RenderWindow, RenderTarget, Color, Texture, Sprite, RenderStates, Image, Transformable}, window::{Style, Event, Key}, system::Vector2f};
 
 fn checksum() -> u8 {
     let mut x: u8 = 0;
@@ -20,7 +20,7 @@ fn checksum() -> u8 {
 
 fn main() {
     let mut window = RenderWindow::new(
-        (160, 144),
+        (160 * 2, 144 * 2),
         "GameBoy",
         Style::CLOSE,
         &Default::default(),
@@ -62,6 +62,9 @@ fn main() {
     
             gameboy.cycle();
             window.clear(Color::BLACK);
+            
+            gameboy.draw(&mut window);
+            
             window.display()
         }
     }
