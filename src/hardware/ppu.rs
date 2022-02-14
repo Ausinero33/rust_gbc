@@ -203,8 +203,6 @@ impl PPU {
                 self.regs[LY] = (self.regs[LY] + 1) % 154;
             }
             self.cycles += 1;
-            //self.regs[LY] = ((self.cycles / 456) % 154) as u8;
-            //self.regs.ly = (self.regs.ly + 1) % 154;
             cycles_to_tick -= 1;
         }
     }
@@ -244,12 +242,11 @@ impl PPU {
             FetcherState::GetDataLow => {
                 let mut dir = self.fetcher_tile + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
 
-                // if self.regs[LCDC] & 0b00010000 != 0 {
-                //     dir += 0x8000;
-                // } else {
-                //     dir += 0x8800;
-                // }
-                dir += 0x8000;
+                if self.regs[LCDC] & 0b00010000 != 0 {
+                    dir += 0x8000;
+                } else {
+                    dir += 0x8800;
+                }
 
                 self.data_low = self.read(dir);
 
@@ -258,12 +255,11 @@ impl PPU {
             FetcherState::GetDataHigh => {
                 let mut dir = self.fetcher_tile + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
 
-                // if self.regs[LCDC] & 0b00010000 != 0 {
-                //     dir += 0x8000;
-                // } else {
-                //     dir += 0x8800;
-                // }
-                dir += 0x8000;
+                if self.regs[LCDC] & 0b00010000 != 0 {
+                    dir += 0x8000;
+                } else {
+                    dir += 0x8800;
+                }
 
                 self.data_high = self.read(dir);
 
@@ -307,7 +303,7 @@ impl PPU {
         
         let pos = (self.x_counter + self.regs[LY] as usize * 160) * 4;
         self.x_counter += 1;
-        if self.x_counter > 160 {
+        if self.x_counter >= 160 {
             return;
         }
 
