@@ -1,7 +1,7 @@
 mod hardware;
 
 use hardware::{GameBoy, bus::Bus};
-use sfml::{graphics::{RenderWindow, RenderTarget, Color, Texture, Sprite, RenderStates, Image, Transformable}, window::{Style, Event, Key}, system::Vector2f};
+use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
 fn checksum() -> u8 {
     let mut x: u8 = 0;
@@ -29,28 +29,34 @@ fn main() {
 
     println!("{}", checksum());
 
-    let mut gameboy = GameBoy::new(Bus::new(), false);
+    let mut gameboy = GameBoy::new(Bus::new(), true);
 
     let roms = [
         "roms/individual/01-special.gb",
-        "roms/individual/02-interrupts.gb",
-        "roms/individual/03-op sp,hl.gb",
-        "roms/individual/04-op r,imm.gb",
-        "roms/individual/05-op rp.gb",
-        "roms/individual/06-ld r,r.gb",
-        "roms/individual/07-jr,jp,call,ret,rst.gb",
-        "roms/individual/08-misc instrs.gb",
-        "roms/individual/09-op r,r.gb",
-        "roms/individual/10-bit ops.gb",
-        "roms/individual/11-op a,(hl).gb"
+        // "roms/individual/02-interrupts.gb",
+        // "roms/individual/03-op sp,hl.gb",
+        // "roms/individual/04-op r,imm.gb",
+        // "roms/individual/05-op rp.gb",
+        // "roms/individual/06-ld r,r.gb",
+        // "roms/individual/07-jr,jp,call,ret,rst.gb",
+        // "roms/individual/08-misc instrs.gb",
+        // "roms/individual/09-op r,r.gb",
+        // "roms/individual/10-bit ops.gb",
+        // "roms/individual/11-op a,(hl).gb"
+        // "roms/Dr. Mario (World).gb"
     ];
 
-    for i in 0..11 {
+    for i in roms {
         gameboy.reset();
-        gameboy.load_rom(roms[i]);
+        gameboy.load_rom(i);
     
         'inner: loop {
             // Controlar si se sale
+
+            if gameboy.cpu.pc == 0x100 {
+                let _a = 1;
+            }
+
             while let Some(event) = window.poll_event() {
                 match event {
                     Event::Closed | Event::KeyPressed {

@@ -1,8 +1,8 @@
-use super::{mbc::MbcController, ppu::{PPU, PpuRegisters}};
+use super::{mbc::MbcController, ppu::PPU, ppu::PpuMode};
 
 pub struct Bus {
     pub rom: Option<Box<dyn MbcController>>,    // 0x0000 - 0x7FFF
-    pub ppu: PPU,                                   // 0x8000 - 0x9FFF
+    pub ppu: PPU,                               // 0x8000 - 0x9FFF
     eram: [u8; 0x2000],                         // 0xA000 - 0xBFFF
     wram: [u8; 0x2000],                         // 0xC000 - 0xDFFF (0xE000 - 0xFDFF)
     hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF
@@ -69,7 +69,11 @@ impl Bus {
                 }
                 //self.rom.as_ref().unwrap().read(dir)
             },
-            0x8000 ..= 0x9FFF => self.ppu.read(dir),
+            0x8000 ..= 0x9FFF => if self.ppu.mode != PpuMode::Drawing {
+                    self.ppu.read(dir)
+                } else {
+                    0xFF
+                },
             0xA000 ..= 0xBFFF => self.eram[dir - 0xA000],
             0xC000 ..= 0xDFFF => self.wram[dir - 0xC000],
             0xE000 ..= 0xFDFF => {
@@ -78,7 +82,13 @@ impl Bus {
                 };
                 self.wram[dir - 0xE000]
             },
-            0xFE00 ..= 0xFFFF => self.hram[dir - 0xFE00],
+            0xFE00 ..= 0xFFFF => {
+                if dir >= 0xFF40 && dir <= 0xFF4B {
+                    self.ppu.regs[dir - 0xFF40]
+                } else {
+                    self.hram[dir - 0xFE00]
+                }
+            },
             _ => panic!("Direccion inválida.")
         }
     }
@@ -86,6 +96,9 @@ impl Bus {
     pub fn write(&mut self, dir: usize, val: u8) {
         match dir {
             0x0000 ..= 0x7FFF => self.rom.as_mut().unwrap().write(dir, val),
+            // 0x8000 ..= 0x9FFF => if self.ppu.mode != PpuMode::Drawing {
+            //         self.ppu.write(dir, val)
+            //     },
             0x8000 ..= 0x9FFF => self.ppu.write(dir, val),
             0xA000 ..= 0xBFFF => self.eram[dir - 0xA000] = val,
             0xC000 ..= 0xDFFF => self.wram[dir - 0xC000] = val,
@@ -93,8 +106,9 @@ impl Bus {
             0xFE00 ..= 0xFFFF => {
                 if dir >= 0xFEA0 && dir <= 0xFEFF {
                     return;
-                } 
-                else if dir == 0xFF04 {
+                } else if dir >= 0xFF40 && dir <= 0xFF4B {
+                    self.ppu.regs[dir - 0xFF40] = val;
+                } else if dir == 0xFF04 {
                     self.hram[dir - 0xFE00] = 0;
                     return;
                 }
@@ -155,22 +169,6 @@ impl Bus {
     }
 
     pub fn cycle(&mut self, cycles: u8) {
-        // Actualizar los registros de la PPU
-        self.ppu.regs = PpuRegisters {
-            lcdc: self.read(0xFF40),
-            stat: self.read(0xFF41),
-            scy: self.read(0xFF42),
-            scx: self.read(0xFF43),
-            ly: self.read(0xFF44),
-            lyc: self.read(0xFF45),
-            dma: self.read(0xFF46),
-            bgp: self.read(0xFF47),
-            obp0: self.read(0xFF48),
-            obp1: self.read(0xFF49),
-            wy: self.read(0xFF4A),
-            wx: self.read(0xFF4B),
-        };
-
         self.ppu.cycle(cycles);
     }
 }

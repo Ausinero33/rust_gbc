@@ -18,8 +18,6 @@ const TIMER: u8 = 2;
 const SERIAL: u8 = 3;
 const JOYPAD: u8 = 4;
 
-const FREQ: u32 = 4194304;
-
 pub struct CPU {
     pub registers: [u8; 8],
     pub pc: u16,
@@ -107,17 +105,16 @@ impl CPU {
     }
 
     pub fn reset(&mut self, enable_boot_rom: bool) {
-        self.registers[A] = 0x01;
-        self.registers[F] = 0x80;
-        self.registers[B] = 0x00;
-        self.registers[C] = 0x13;
-        self.registers[D] = 0x00;
-        self.registers[E] = 0xD8;
-        self.registers[H] = 0x01;
-        self.registers[L] = 0x4D;
-
-        self.sp = 0xFFFE;
         if !enable_boot_rom {
+            self.registers[A] = 0x01;
+            self.registers[F] = 0x80;
+            self.registers[B] = 0x00;
+            self.registers[C] = 0x13;
+            self.registers[D] = 0x00;
+            self.registers[E] = 0xD8;
+            self.registers[H] = 0x01;
+            self.registers[L] = 0x4D;
+            self.sp = 0xFFFE;
             self.pc = 0x100;
         }
         self.bus.reset();
