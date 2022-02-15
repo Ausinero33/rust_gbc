@@ -1,4 +1,4 @@
-use super::{mbc::MbcController, ppu::PPU, ppu::PpuMode};
+use super::{mbc::MbcController, ppu::PPU, ppu::PpuMode, cpu::Interrupts};
 
 pub struct Bus {
     pub rom: Option<Box<dyn MbcController>>,    // 0x0000 - 0x7FFF
@@ -169,6 +169,30 @@ impl Bus {
     }
 
     pub fn cycle(&mut self, cycles: u8) {
-        self.ppu.cycle(cycles);
+        let ints = self.ppu.cycle(cycles);
+
+        match ints {
+            // No interrupts de la PPU
+            (false, false) => {},
+            //VBLANK y STAT
+            (true, true) => {self.set_int(Interrupts::VBlank); self.set_int(Interrupts::LcdStat);},
+            //VBLANK
+            (true, false) => self.set_int(Interrupts::VBlank),
+            //STAT
+            (false, true) => self.set_int(Interrupts::LcdStat),
+        }
+    }
+
+    pub fn set_int(&mut self, int: Interrupts) {
+        let mut int_f = self.read(0xFF0F);
+        match int {
+            Interrupts::VBlank => int_f |= 0b00000001,
+            Interrupts::LcdStat => int_f |= 0b00000010,
+            Interrupts::Timer => int_f |= 0b00000100,
+            Interrupts::Serial => int_f |= 0b00001000,
+            Interrupts::Joypad => int_f |= 0b00010000,
+        }
+
+        self.write(0xFF0F, int_f);
     }
 }

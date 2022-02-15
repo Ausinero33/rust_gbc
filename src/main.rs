@@ -44,6 +44,7 @@ fn main() {
         // "roms/individual/11-op a,(hl).gb"
         //"roms/Dr. Mario (World).gb"
         //"roms/cpu_instrs.gb"
+        //"roms/Tetris (World) (Rev A).gb"
     ];
 
     for i in roms {

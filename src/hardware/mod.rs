@@ -44,9 +44,8 @@ impl GameBoy {
         for _i in 0..(FREQ / 60) {
             //println!("{:02X}", self.cpu.pc);
 
-            if self.cpu.pc == 0x100 {
+            if self.cpu.pc == 0xC7D2 {
                 // self.debug_vram();
-                // println!("Background");
                 // self.debug_background();
                 // self.debug_frame();
             }

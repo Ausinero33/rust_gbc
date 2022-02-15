@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 
 use sfml::graphics::Image;
 
+use super::cpu::Interrupts;
+
 type Tile = [[TilePixelValue; 8]; 8];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -159,12 +161,20 @@ impl PPU {
     //     }
     // }
 
-    pub fn cycle(&mut self, cycles: u8) {
-        // TODO Hacer cada modo
+    // (VBlank, STAT)
+    pub fn cycle(&mut self, cycles: u8) -> (bool, bool) {
         let mut cycles_to_tick = cycles;
+
+        let mut int = (false, false);
+
+        if self.regs[LCDC] & 0b10000000 == 0 {
+            return int;
+        }
 
         while cycles_to_tick > 0 {
             //self.check_mode();
+
+            self.regs[STAT] &= 0b10000111;
 
             match self.mode {
                 PpuMode::HBlank => {
@@ -174,8 +184,11 @@ impl PPU {
                     if self.scanline_counter == 455 {
                         if self.regs[LY] == 143 {
                             self.mode = PpuMode::VBlank;
+                            int.0 = true;
+                            self.regs[STAT] |= 0b00010000;
                         } else {
                             self.mode = PpuMode::OamScaning;
+                            self.regs[STAT] |= 0b00100000;
                         }
                     }
                 },
@@ -190,11 +203,6 @@ impl PPU {
                     }
                 },
                 PpuMode::Drawing => {
-                    // if self.regs[LCDC] & 0b00000001 != 0 {
-                    //     self.fifo_cycle();
-                    //     self.fetcher_cycle(&cycles_to_tick);
-                    // }
-
                     self.fetcher_cycle(&cycles_to_tick);
                     self.fifo_cycle();
 
@@ -202,6 +210,7 @@ impl PPU {
 
                     if self.scanline_counter == 251 {
                         self.mode = PpuMode::HBlank;
+                        self.regs[STAT] |= 0b00001000;
                     }
                 },
                 PpuMode::VBlank => {
@@ -216,8 +225,13 @@ impl PPU {
 
             if self.regs[LY] == self.regs[LYC] {
                 self.regs[STAT] |= 0b00000100;
+                self.regs[STAT] |= 0b01000000;
             } else {
-                self.regs[STAT] &= 0b01111011;
+                self.regs[STAT] &= 0b11111011;
+            }
+
+            if self.regs[STAT] & 0b01111100 != 0 {
+                int.1 = true;
             }
 
             self.regs[LY] = ((self.cycles / 456) % 154) as u8;
@@ -226,6 +240,8 @@ impl PPU {
             self.scanline_counter = (self.cycles % 456) as usize;
             cycles_to_tick -= 1;
         }
+
+        return int;
     }
 
 

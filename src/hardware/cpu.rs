@@ -12,11 +12,14 @@ const H: usize = 6;
 const L: usize = 7;
 
 // Interrupciones
-const VBLANK: u8 = 0;
-const LCDSTART: u8 = 1;
-const TIMER: u8 = 2;
-const SERIAL: u8 = 3;
-const JOYPAD: u8 = 4;
+
+pub enum Interrupts {
+    VBlank,
+    LcdStat,
+    Timer,
+    Serial,
+    Joypad,
+}
 
 pub struct CPU {
     pub registers: [u8; 8],
@@ -170,8 +173,8 @@ impl CPU {
     fn get_ie(&mut self) -> u8 {
         self.cycles += 4;
         self.bus.read(0xFFFF)
-    }
-
+    }    
+    
     fn get_if(&mut self) -> u8 {
         self.cycles += 4;
         self.bus.read(0xFF0F)
@@ -255,22 +258,8 @@ impl CPU {
             if tima_int {
                 let tma = self.bus.read(0xFF06);
                 self.bus.write(0xFF05, tma);
-                self.set_int(TIMER);
+                self.bus.set_int(Interrupts::Timer);
             }
         }
-    }
-
-    fn set_int(&mut self, int: u8) {
-        let mut int_f = self.get_if();
-        match int {
-            0 => int_f |= 0b00000001,
-            1 => int_f |= 0b00000010,
-            2 => int_f |= 0b00000100,
-            3 => int_f |= 0b00001000,
-            4 => int_f |= 0b00010000,
-            _ => panic!("Interrupción erronea")
-        }
-
-        self.bus.write(0xFF0F, int_f);
     }
 }
