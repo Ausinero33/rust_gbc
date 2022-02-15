@@ -52,7 +52,7 @@ pub struct PPU {
     pub mode: PpuMode,
     cycles: u64,
 
-    scanline_counter: u16,
+    scanline_counter: usize,
 
     fetcher_tilemap: usize,
     fetcher_x: usize,
@@ -68,7 +68,6 @@ pub struct PPU {
     background_fifo: VecDeque<TilePixelValue>,
 
     pub lcd_pixels: [u8; 144 * 160 * 4],
-    x_counter: usize,
 }
 
 
@@ -97,7 +96,6 @@ impl PPU {
             background_fifo: VecDeque::with_capacity(16),
 
             lcd_pixels: [0x00; 144 * 160 * 4],
-            x_counter: 0,
         }
     }
 
@@ -149,48 +147,70 @@ impl PPU {
         Image::create_from_pixels(160, 144, &self.lcd_pixels).unwrap()
     }
 
-    fn check_mode(&mut self) {
-        if self.cycles % 456 < 80 && self.regs[LY] < 144 {
-            self.mode = PpuMode::OamScaning;
-        } else if self.cycles % 456 < 252 && self.regs[LY] < 144 {
-            self.mode = PpuMode::Drawing;
-        } else if self.regs[LY] < 144 {
-            self.mode = PpuMode::HBlank;
-        } else {
-            self.mode = PpuMode::VBlank;
-        }
-    }
+    // fn check_mode(&mut self) {
+    //     if self.cycles % 456 < 80 && self.regs[LY] < 144 {
+    //         self.mode = PpuMode::OamScaning;
+    //     } else if self.cycles % 456 < 252 && self.regs[LY] < 144 {
+    //         self.mode = PpuMode::Drawing;
+    //     } else if self.regs[LY] < 144 {
+    //         self.mode = PpuMode::HBlank;
+    //     } else {
+    //         self.mode = PpuMode::VBlank;
+    //     }
+    // }
 
     pub fn cycle(&mut self, cycles: u8) {
         // TODO Hacer cada modo
         let mut cycles_to_tick = cycles;
 
         while cycles_to_tick > 0 {
-            self.check_mode();
+            //self.check_mode();
 
             match self.mode {
                 PpuMode::HBlank => {
 
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b00;
+
+                    if self.scanline_counter == 455 {
+                        if self.regs[LY] == 143 {
+                            self.mode = PpuMode::VBlank;
+                        } else {
+                            self.mode = PpuMode::OamScaning;
+                        }
+                    }
                 },
                 PpuMode::OamScaning => {
 
-                    self.fetcher_x = 0;
-                    //self.background_fifo.clear();
-                    self.x_counter = 0;
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b10;
+
+                    if self.scanline_counter == 79 {
+                        self.mode = PpuMode::Drawing;
+                        self.fetcher_x = 0;
+                        self.background_fifo.clear();
+                    }
                 },
                 PpuMode::Drawing => {
-                    if self.regs[LCDC] & 0b00000001 != 0 {
-                        self.fetcher_cycle(&cycles_to_tick);
-                        self.fifo_cycle();
-                    }
+                    // if self.regs[LCDC] & 0b00000001 != 0 {
+                    //     self.fifo_cycle();
+                    //     self.fetcher_cycle(&cycles_to_tick);
+                    // }
+
+                    self.fetcher_cycle(&cycles_to_tick);
+                    self.fifo_cycle();
 
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b11;
+
+                    if self.scanline_counter == 251 {
+                        self.mode = PpuMode::HBlank;
+                    }
                 },
                 PpuMode::VBlank => {
 
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b01;
+
+                    if self.scanline_counter == 455 && self.regs[LY] == 153 {
+                        self.mode = PpuMode::OamScaning;
+                    }
                 }
             }
 
@@ -200,13 +220,10 @@ impl PPU {
                 self.regs[STAT] &= 0b01111011;
             }
 
-            //self.regs[LY] = 64;
-            self.scanline_counter += 1;
-            if self.scanline_counter == 456 {
-                self.scanline_counter = 0;
-                self.regs[LY] = (self.regs[LY] + 1) % 154;
-            }
+            self.regs[LY] = ((self.cycles / 456) % 154) as u8;
+
             self.cycles += 1;
+            self.scanline_counter = (self.cycles % 456) as usize;
             cycles_to_tick -= 1;
         }
     }
@@ -214,7 +231,7 @@ impl PPU {
 
 
     fn fetcher_cycle(&mut self, cycles: &u8) {
-        if cycles % 2 == 0 {
+        if cycles % 2 != 0 {
             return;
         }
 
@@ -240,10 +257,6 @@ impl PPU {
                 };
 
                 self.fetcher_tile = self.read(x + y + self.fetcher_tilemap) as usize;
-
-                // if self.fetcher_tile == 0x0D {
-                //     let _a = 1;
-                // }
                 
                 self.fetcher_state = FetcherState::GetDataLow;
             },
@@ -270,10 +283,6 @@ impl PPU {
                 }
 
                 self.data_high = self.read(dir);
-
-                if self.fetcher_tile != 0 {
-                    let _a = 1;
-                }
 
                 self.fetcher_state = FetcherState::PushToFIFO;
             },
@@ -304,16 +313,19 @@ impl PPU {
     }
 
     fn fifo_cycle(&mut self) {
-        if self.background_fifo.len() <= 8 {
+        if self.background_fifo.is_empty() {
             return;
         }
+
+        // TODO Seguramente que esto este aqui significa que hay algo mal en algun sitio.
+        if self.scanline_counter < 86 || self.scanline_counter - 86 >= 160 || self.regs[LY] >= 144 {
+            return;
+        }
+
         let pixel = self.background_fifo.pop_front().unwrap();
 
-        let pos = (self.x_counter + self.regs[LY] as usize * 160) * 4;
-        self.x_counter += 1;
-        if self.x_counter > 160 {
-            return;
-        }
+        let pos = ((self.scanline_counter - 86) + self.regs[LY] as usize * 160) * 4;
+
 
         match pixel {
             TilePixelValue::Zero => {
@@ -341,7 +353,5 @@ impl PPU {
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
         }
-
     }
-
 }
