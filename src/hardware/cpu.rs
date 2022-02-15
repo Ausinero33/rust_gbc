@@ -171,12 +171,12 @@ impl CPU {
     }
 
     fn get_ie(&mut self) -> u8 {
-        self.cycles += 4;
+        //self.cycles += 4;
         self.bus.read(0xFFFF)
     }    
     
     fn get_if(&mut self) -> u8 {
-        self.cycles += 4;
+        //self.cycles += 4;
         self.bus.read(0xFF0F)
     }
 
@@ -228,9 +228,11 @@ impl CPU {
         self.bus.write(self.sp as usize, (self.pc / 0x100) as u8);
         self.sp = self.sp.wrapping_sub(1);
         self.bus.write(self.sp as usize, self.pc as u8);
+        self.cycles += 8;
 
         // Tratar interrupcion
         self.pc = 0x40 + int_offset[int];
+        self.cycles += 4;
     }
 
     fn update_timers(&mut self) {

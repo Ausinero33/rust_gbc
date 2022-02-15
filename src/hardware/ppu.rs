@@ -2,8 +2,6 @@ use std::collections::VecDeque;
 
 use sfml::graphics::Image;
 
-use super::cpu::Interrupts;
-
 type Tile = [[TilePixelValue; 8]; 8];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -68,7 +66,7 @@ pub struct PPU {
     //pub regs: PpuRegisters,
 
     background_fifo: VecDeque<TilePixelValue>,
-
+    lcd_x: usize,
     pub lcd_pixels: [u8; 144 * 160 * 4],
 }
 
@@ -96,7 +94,7 @@ impl PPU {
             data_high: 0,
 
             background_fifo: VecDeque::with_capacity(16),
-
+            lcd_x: 0,
             lcd_pixels: [0x00; 144 * 160 * 4],
         }
     }
@@ -198,8 +196,6 @@ impl PPU {
 
                     if self.scanline_counter == 79 {
                         self.mode = PpuMode::Drawing;
-                        self.fetcher_x = 0;
-                        self.background_fifo.clear();
                     }
                 },
                 PpuMode::Drawing => {
@@ -211,6 +207,9 @@ impl PPU {
                     if self.scanline_counter == 251 {
                         self.mode = PpuMode::HBlank;
                         self.regs[STAT] |= 0b00001000;
+                        self.fetcher_x = 0;
+                        self.lcd_x = 0;
+                        self.background_fifo.clear();
                     }
                 },
                 PpuMode::VBlank => {
@@ -234,10 +233,9 @@ impl PPU {
                 int.1 = true;
             }
 
-            self.regs[LY] = ((self.cycles / 456) % 154) as u8;
-
             self.cycles += 1;
-            self.scanline_counter = (self.cycles % 456) as usize;
+            self.regs[LY] = ((self.cycles / 456) % 154) as u8;
+            self.scanline_counter = ((self.scanline_counter + 1) % 456) as usize;
             cycles_to_tick -= 1;
         }
 
@@ -274,15 +272,30 @@ impl PPU {
 
                 self.fetcher_tile = self.read(x + y + self.fetcher_tilemap) as usize;
                 
+                
                 self.fetcher_state = FetcherState::GetDataLow;
             },
             FetcherState::GetDataLow => {
                 let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
 
+                // if self.regs[LCDC] & 0b00010000 != 0 {
+                //     dir += 0x8000;
+                // } else {
+                //     dir += 0x8800;
+                // }
+
                 if self.regs[LCDC] & 0b00010000 != 0 {
-                    dir += 0x8000;
+                    if self.fetcher_tile <= 127 {
+                        dir += 0x8000;
+                    } else {
+                        dir += 0x8800;
+                    }
                 } else {
-                    dir += 0x8800;
+                    if self.fetcher_tile >= 127 {
+                        dir += 0x9000;
+                    } else {
+                        dir += 0x8800;
+                    }
                 }
 
                 self.data_low = self.read(dir);
@@ -292,10 +305,24 @@ impl PPU {
             FetcherState::GetDataHigh => {
                 let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
 
+                // if self.regs[LCDC] & 0b00010000 != 0 {
+                //     dir += 0x8000;
+                // } else {
+                //     dir += 0x8800;
+                // }
+
                 if self.regs[LCDC] & 0b00010000 != 0 {
-                    dir += 0x8000;
+                    if self.fetcher_tile <= 127 {
+                        dir += 0x8000;
+                    } else {
+                        dir += 0x8800;
+                    }
                 } else {
-                    dir += 0x8800;
+                    if self.fetcher_tile >= 127 {
+                        dir += 0x9000;
+                    } else {
+                        dir += 0x8800;
+                    }
                 }
 
                 self.data_high = self.read(dir);
@@ -321,8 +348,7 @@ impl PPU {
                     self.background_fifo.push_back(value);
                 }
 
-                self.fetcher_x = self.fetcher_x.wrapping_add(1) % 32;
-
+                self.fetcher_x = (self.fetcher_x + 1) % 32;
                 self.fetcher_state = FetcherState::GetTile;
             }
         }
@@ -340,8 +366,7 @@ impl PPU {
 
         let pixel = self.background_fifo.pop_front().unwrap();
 
-        let pos = ((self.scanline_counter - 86) + self.regs[LY] as usize * 160) * 4;
-
+        let pos = (self.scanline_counter - 86 + self.regs[LY] as usize * 160) * 4;
 
         match pixel {
             TilePixelValue::Zero => {

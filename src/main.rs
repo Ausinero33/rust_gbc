@@ -3,21 +3,6 @@ mod hardware;
 use hardware::{GameBoy, bus::Bus};
 use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
-fn checksum() -> u8 {
-    let mut x: u8 = 0;
-
-    let rom = [0x44, 0x52, 0x2E, 0x4D, 0x41, 0x52, 0x49, 0x4F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00];
-
-    for i in rom {
-        x = x.wrapping_sub(x);
-        x = x.wrapping_sub(i);
-        x = x.wrapping_sub(1);
-
-    };
-
-    x
-}
-
 fn main() {
     let mut window = RenderWindow::new(
         (160 * 2, 144 * 2),
@@ -25,13 +10,10 @@ fn main() {
         Style::CLOSE,
         &Default::default(),
     );
-    window.set_framerate_limit(60);
-
-    println!("{}", checksum());
-
+    window.set_framerate_limit(59);
 
     let roms = [
-        "roms/individual/01-special.gb",
+        //"roms/individual/01-special.gb",
         // "roms/individual/02-interrupts.gb",
         // "roms/individual/03-op sp,hl.gb",
         // "roms/individual/04-op r,imm.gb",
@@ -43,7 +25,7 @@ fn main() {
         // "roms/individual/10-bit ops.gb",
         // "roms/individual/11-op a,(hl).gb"
         //"roms/Dr. Mario (World).gb"
-        //"roms/cpu_instrs.gb"
+        "roms/cpu_instrs.gb"
         //"roms/Tetris (World) (Rev A).gb"
     ];
 
@@ -54,10 +36,6 @@ fn main() {
     
         'inner: loop {
             // Controlar si se sale
-
-            if gameboy.cpu.pc == 0x100 {
-                let _a = 1;
-            }
 
             while let Some(event) = window.poll_event() {
                 match event {

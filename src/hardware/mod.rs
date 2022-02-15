@@ -8,7 +8,7 @@ mod inst_set;
 mod mbc;
 pub mod bus;
 
-const FREQ: u32 = 4_194_304;
+//const FREQ: u32 = 4_194_304;
 
 pub struct GameBoy {
     pub cpu: CPU,
@@ -41,13 +41,14 @@ impl GameBoy {
     }
 
     pub fn cycle(&mut self) {
-        for _i in 0..(FREQ / 60) {
+        for _i in 0..70224 {
             //println!("{:02X}", self.cpu.pc);
 
-            if self.cpu.pc == 0xC7D2 {
+            if self.cpu.pc == 0x48 {
                 // self.debug_vram();
                 // self.debug_background();
                 // self.debug_frame();
+                let _a = 1;
             }
 
             let cycles_to_run = self.cpu.cycle();
