@@ -116,8 +116,8 @@ impl CPU {
             self.registers[L] = 0x4D;
             self.sp = 0xFFFE;
             self.pc = 0x100;
+            self.bus.reset();
         }
-        self.bus.reset();
     }
 
     pub fn cycle(&mut self) -> u64{

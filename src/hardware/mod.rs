@@ -48,7 +48,7 @@ impl GameBoy {
                 // self.debug_vram();
                 // println!("Background");
                 // self.debug_background();
-                self.debug_frame();
+                // self.debug_frame();
             }
 
             let cycles_to_run = self.cpu.cycle();

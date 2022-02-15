@@ -244,11 +244,11 @@ impl PPU {
                 // if self.fetcher_tile == 0x0D {
                 //     let _a = 1;
                 // }
-
+                
                 self.fetcher_state = FetcherState::GetDataLow;
             },
             FetcherState::GetDataLow => {
-                let mut dir = self.fetcher_tile + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
+                let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
 
                 if self.regs[LCDC] & 0b00010000 != 0 {
                     dir += 0x8000;
@@ -261,7 +261,7 @@ impl PPU {
                 self.fetcher_state = FetcherState::GetDataHigh;
             },
             FetcherState::GetDataHigh => {
-                let mut dir = self.fetcher_tile + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
+                let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
 
                 if self.regs[LCDC] & 0b00010000 != 0 {
                     dir += 0x8000;
@@ -270,6 +270,10 @@ impl PPU {
                 }
 
                 self.data_high = self.read(dir);
+
+                if self.fetcher_tile != 0 {
+                    let _a = 1;
+                }
 
                 self.fetcher_state = FetcherState::PushToFIFO;
             },

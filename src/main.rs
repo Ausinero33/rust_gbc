@@ -29,25 +29,25 @@ fn main() {
 
     println!("{}", checksum());
 
-    let mut gameboy = GameBoy::new(Bus::new(), true);
 
     let roms = [
         "roms/individual/01-special.gb",
-        "roms/individual/02-interrupts.gb",
-        "roms/individual/03-op sp,hl.gb",
-        "roms/individual/04-op r,imm.gb",
-        "roms/individual/05-op rp.gb",
-        "roms/individual/06-ld r,r.gb",
-        "roms/individual/07-jr,jp,call,ret,rst.gb",
-        "roms/individual/08-misc instrs.gb",
-        "roms/individual/09-op r,r.gb",
-        "roms/individual/10-bit ops.gb",
-        "roms/individual/11-op a,(hl).gb"
+        // "roms/individual/02-interrupts.gb",
+        // "roms/individual/03-op sp,hl.gb",
+        // "roms/individual/04-op r,imm.gb",
+        // "roms/individual/05-op rp.gb",
+        // "roms/individual/06-ld r,r.gb",
+        // "roms/individual/07-jr,jp,call,ret,rst.gb",
+        // "roms/individual/08-misc instrs.gb",
+        // "roms/individual/09-op r,r.gb",
+        // "roms/individual/10-bit ops.gb",
+        // "roms/individual/11-op a,(hl).gb"
         //"roms/Dr. Mario (World).gb"
         //"roms/cpu_instrs.gb"
     ];
 
     for i in roms {
+        let mut gameboy = GameBoy::new(Bus::new(), true);
         gameboy.reset();
         gameboy.load_rom(i);
     
