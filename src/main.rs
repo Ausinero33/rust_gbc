@@ -1,31 +1,98 @@
 mod hardware;
 
-use hardware::cpu::CPU;
+use hardware::{GameBoy, bus::Bus};
+use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
-fn main() {
-    let mut cpu = CPU::new();
+fn checksum() -> u8 {
+    let mut x: u8 = 0;
 
-    cpu.reset();
+    let rom = [0x44, 0x52, 0x2E, 0x4D, 0x41, 0x52, 0x49, 0x4F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00];
 
-    //cpu.mem.load_rom("roms/individual/01-special.gb");
-    cpu.mem.load_rom("roms/Dr. Mario (World).gb");
+    for i in rom {
+        x = x.wrapping_sub(x);
+        x = x.wrapping_sub(i);
+        x = x.wrapping_sub(1);
 
-    loop {
-        cpu.cycle();
+    };
 
-        output_temp(&mut cpu);
-
-        // if cpu.stop {
-        //     // TODO casi seguro que esto no es asi
-        //     break;
-        // }
-    }
+    x
 }
 
-fn output_temp(cpu: &mut CPU) {
-    if cpu.mem.read(0xff02 as usize) == 0x81 {
-        let c = cpu.mem.read(0xff01 as usize);
-        print!("{}", char::from(c));
-        cpu.mem.write(0xff02 as usize, 0);
+fn main() {
+    let mut window = RenderWindow::new(
+        (160 * 2, 144 * 2),
+        "GameBoy",
+        Style::CLOSE,
+        &Default::default(),
+    );
+    window.set_framerate_limit(60);
+
+    println!("{}", checksum());
+
+
+    let roms = [
+        "roms/individual/01-special.gb",
+        // "roms/individual/02-interrupts.gb",
+        // "roms/individual/03-op sp,hl.gb",
+        // "roms/individual/04-op r,imm.gb",
+        // "roms/individual/05-op rp.gb",
+        // "roms/individual/06-ld r,r.gb",
+        // "roms/individual/07-jr,jp,call,ret,rst.gb",
+        // "roms/individual/08-misc instrs.gb",
+        // "roms/individual/09-op r,r.gb",
+        // "roms/individual/10-bit ops.gb",
+        // "roms/individual/11-op a,(hl).gb"
+        //"roms/Dr. Mario (World).gb"
+        //"roms/cpu_instrs.gb"
+    ];
+
+    for i in roms {
+        let mut gameboy = GameBoy::new(Bus::new(), true);
+        gameboy.reset();
+        gameboy.load_rom(i);
+    
+        'inner: loop {
+            // Controlar si se sale
+
+            if gameboy.cpu.pc == 0x100 {
+                let _a = 1;
+            }
+
+            while let Some(event) = window.poll_event() {
+                match event {
+                    Event::Closed | Event::KeyPressed {
+                        code: Key::ESCAPE, ..
+                    } => break 'inner,
+                    _ => {}
+                }
+            }
+    
+            gameboy.cycle();
+            window.clear(Color::BLACK);
+            
+            gameboy.draw(&mut window);
+            
+            window.display()
+        }
     }
+
+    // gameboy.reset();
+    // gameboy.load_rom("roms/Dr. Mario (World).gb");
+
+
+    // 'inner: loop {
+    //     //Controlar si se sale
+    //     while let Some(event) = window.poll_event() {
+    //         match event {
+    //             Event::Closed | Event::KeyPressed {
+    //                 code: Key::ESCAPE, ..
+    //             } => break 'inner,
+    //             _ => {}
+    //         }
+    //     }
+
+    //     gameboy.cycle();
+    //     window.clear(Color::BLACK);
+    //     window.display()
+    // }
 }

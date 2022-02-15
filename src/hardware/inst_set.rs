@@ -58,12 +58,12 @@ fn reg_to_reg(cpu: &mut CPU, reg_dst: usize, reg_src: usize) {
 }
 
 fn hlind_to_reg(cpu: &mut CPU, reg_dst: usize) {
-    cpu.registers[reg_dst] = cpu.mem.read((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize);
+    cpu.registers[reg_dst] = cpu.bus.read((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize);
     cpu.cycles += 8;
 }
 
 fn reg_to_regxind(cpu: &mut CPU, regx_dst: usize, reg_src: usize) {
-    cpu.mem.write((cpu.registers[regx_dst] as u16 + cpu.registers[regx_dst - 1] as u16 * 0x100) as usize, cpu.registers[reg_src]);
+    cpu.bus.write((cpu.registers[regx_dst] as u16 + cpu.registers[regx_dst - 1] as u16 * 0x100) as usize, cpu.registers[reg_src]);
     cpu.cycles += 8;
 }
 
@@ -73,12 +73,12 @@ fn u8_to_reg(cpu: &mut CPU, reg_src: usize) {
 }
 
 fn u8_to_hlind(cpu: &mut CPU, val: u8) {
-    cpu.mem.write((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize, val);
+    cpu.bus.write((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize, val);
     cpu.cycles += 8;
 }
 
 fn regxind_to_reg(cpu: &mut CPU, reg_dst: usize, regx_src: usize) {
-    cpu.registers[reg_dst] = cpu.mem.read((cpu.registers[regx_src] as u16 + cpu.registers[regx_src - 1] as u16 * 0x100) as usize);
+    cpu.registers[reg_dst] = cpu.bus.read((cpu.registers[regx_src] as u16 + cpu.registers[regx_src - 1] as u16 * 0x100) as usize);
     cpu.cycles += 8;
 }
 
@@ -92,7 +92,7 @@ pub fn ld_deind_a(cpu: &mut CPU) {
 }
 
 pub fn ld_hlindinc_a(cpu: &mut CPU) {
-    cpu.mem.write((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize, cpu.registers[A]);
+    cpu.bus.write((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize, cpu.registers[A]);
 
     let x = cpu.registers[L].overflowing_add(1);
     cpu.registers[L] = x.0;
@@ -104,7 +104,7 @@ pub fn ld_hlindinc_a(cpu: &mut CPU) {
 }
 
 pub fn ld_hlinddec_a(cpu: &mut CPU) {
-    cpu.mem.write((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize, cpu.registers[A]);
+    cpu.bus.write((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize, cpu.registers[A]);
 
     let x = cpu.registers[L].overflowing_sub(1);
     cpu.registers[L] = x.0;
@@ -157,7 +157,7 @@ pub fn ld_a_deind(cpu: &mut CPU) {
 }
 
 pub fn ld_a_hlindinc(cpu: &mut CPU) {
-    cpu.registers[A] = cpu.mem.read((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize);
+    cpu.registers[A] = cpu.bus.read((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize);
 
     let x = cpu.registers[L].overflowing_add(1);
     cpu.registers[L] = x.0;
@@ -169,7 +169,7 @@ pub fn ld_a_hlindinc(cpu: &mut CPU) {
 }
 
 pub fn ld_a_hlinddec(cpu: &mut CPU) {
-    cpu.registers[A] = cpu.mem.read((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize);
+    cpu.registers[A] = cpu.bus.read((cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize);
 
     let x = cpu.registers[L].overflowing_sub(1);
     cpu.registers[L] = x.0;
@@ -443,39 +443,39 @@ pub fn ld_a_a(cpu: &mut CPU) {
 
 pub fn ld_ff00u8_a(cpu: &mut CPU) {
     let val = cpu.fetch();
-    cpu.mem.write((0xFF00 + val as u16) as usize, cpu.registers[A]);
+    cpu.bus.write((0xFF00 + val as u16) as usize, cpu.registers[A]);
     cpu.cycles += 12;
 }
 
 pub fn ld_a_ff00u8(cpu: &mut CPU) {
     let val = cpu.fetch();
-    cpu.registers[A] = cpu.mem.read((0xFF00 + val as u16) as usize);
+    cpu.registers[A] = cpu.bus.read((0xFF00 + val as u16) as usize);
     cpu.cycles += 12;
 }
 
 pub fn ld_ff00c_a(cpu: &mut CPU) {
     let val = cpu.registers[C];
-    cpu.mem.write((0xFF00 + val as u16) as usize, cpu.registers[A]);
+    cpu.bus.write((0xFF00 + val as u16) as usize, cpu.registers[A]);
     cpu.cycles += 8;
 }
 
 pub fn ld_a_ff00c(cpu: &mut CPU) {
     let val = cpu.registers[C];
-    cpu.registers[A] = cpu.mem.read((0xFF00 + val as u16) as usize);
+    cpu.registers[A] = cpu.bus.read((0xFF00 + val as u16) as usize);
     cpu.cycles += 8;
 }
 
 pub fn ld_u16ind_a(cpu: &mut CPU) {
     let dir_low = cpu.fetch();
     let dir_high = cpu.fetch();
-    cpu.mem.write((dir_low as u16 + dir_high as u16 * 0x100) as usize, cpu.registers[A]);
+    cpu.bus.write((dir_low as u16 + dir_high as u16 * 0x100) as usize, cpu.registers[A]);
     cpu.cycles += 16;
 }
 
 pub fn ld_a_u16ind(cpu: &mut CPU) {
     let dir_low = cpu.fetch();
     let dir_high = cpu.fetch();
-    cpu.registers[A] = cpu.mem.read((dir_low as u16 + dir_high as u16 * 0x100) as usize);
+    cpu.registers[A] = cpu.bus.read((dir_low as u16 + dir_high as u16 * 0x100) as usize);
     cpu.cycles += 16;
 }
 
@@ -487,18 +487,18 @@ fn u16_to_regx(cpu: &mut CPU, regx: usize) {
 }
 
 fn pop_regx(cpu: &mut CPU, regx: usize) {
-    cpu.registers[regx] = cpu.mem.read(cpu.sp as usize);
+    cpu.registers[regx] = cpu.bus.read(cpu.sp as usize);
     cpu.sp += 1;
-    cpu.registers[regx - 1] = cpu.mem.read(cpu.sp as usize);
+    cpu.registers[regx - 1] = cpu.bus.read(cpu.sp as usize);
     cpu.sp += 1;
     cpu.cycles += 12;
 }
 
 fn push_regx(cpu: &mut CPU, regx: usize) {
     cpu.sp -= 1;
-    cpu.mem.write(cpu.sp as usize, cpu.registers[regx - 1]);
+    cpu.bus.write(cpu.sp as usize, cpu.registers[regx - 1]);
     cpu.sp -= 1;
-    cpu.mem.write(cpu.sp as usize, cpu.registers[regx]);
+    cpu.bus.write(cpu.sp as usize, cpu.registers[regx]);
     cpu.cycles += 16;
 }
 
@@ -521,8 +521,8 @@ pub fn ld_sp_u16(cpu: &mut CPU) {
 
 pub fn ld_u16ind_sp(cpu: &mut CPU) {
     let dir = cpu.fetch() as u16 + cpu.fetch() as u16 * 0x100;
-    cpu.mem.write(dir as usize, cpu.sp as u8);
-    cpu.mem.write((dir + 1) as usize, (cpu.sp / 0x100) as u8);
+    cpu.bus.write(dir as usize, cpu.sp as u8);
+    cpu.bus.write((dir + 1) as usize, (cpu.sp / 0x100) as u8);
     cpu.cycles += 20;
 }
 
@@ -544,9 +544,9 @@ pub fn pop_hl(cpu: &mut CPU) {
 }
 
 pub fn pop_af(cpu: &mut CPU) {
-    cpu.registers[F] = cpu.mem.read(cpu.sp as usize) & 0xF0;
+    cpu.registers[F] = cpu.bus.read(cpu.sp as usize) & 0xF0;
     cpu.sp += 1;
-    cpu.registers[A] = cpu.mem.read(cpu.sp as usize);
+    cpu.registers[A] = cpu.bus.read(cpu.sp as usize);
     cpu.sp += 1;
     cpu.cycles += 12;
 }
@@ -619,12 +619,12 @@ pub fn inc_l(cpu: &mut CPU) {
 
 pub fn inc_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let mut val = cpu.mem.read(dir as usize);
+    let mut val = cpu.bus.read(dir as usize);
     set_flags(cpu, H_FLAG, check_half_carry(val, 1));
     set_flags(cpu, N_FLAG, false);
     val = val.overflowing_add(1).0;
     set_flags(cpu, Z_FLAG, val == 0);
-    cpu.mem.write(dir as usize, val);
+    cpu.bus.write(dir as usize, val);
     cpu.cycles += 12;
 }
 
@@ -658,12 +658,12 @@ pub fn dec_l(cpu: &mut CPU) {
 
 pub fn dec_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let mut val = cpu.mem.read(dir as usize);
+    let mut val = cpu.bus.read(dir as usize);
     set_flags(cpu, H_FLAG, check_half_borrow(val, 1));
     set_flags(cpu, N_FLAG, true);
     val = val.overflowing_sub(1).0;
     set_flags(cpu, Z_FLAG, val == 0);
-    cpu.mem.write(dir as usize, val);
+    cpu.bus.write(dir as usize, val);
     cpu.cycles += 12;
 }
 
@@ -744,7 +744,7 @@ pub fn add_a_l(cpu: &mut CPU) {
 
 pub fn add_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     set_flags(cpu, H_FLAG, check_half_carry(cpu.registers[A], val));
     let x = cpu.registers[A].overflowing_add(val);
     cpu.registers[A] = x.0;
@@ -802,7 +802,7 @@ pub fn adc_a_l(cpu: &mut CPU) {
 
 pub fn adc_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     let cy = get_carry(cpu);
     set_flags(cpu, H_FLAG, check_half_carry_cy(cpu.registers[A], val, cy));
 
@@ -856,7 +856,7 @@ pub fn sub_a_l(cpu: &mut CPU) {
 
 pub fn sub_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], val));
     let x = cpu.registers[A].overflowing_sub(val);
     cpu.registers[A] = x.0;
@@ -914,7 +914,7 @@ pub fn sbc_a_l(cpu: &mut CPU) {
 
 pub fn sbc_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     let cy = get_carry(cpu);
     set_flags(cpu, H_FLAG, check_half_borrow_cy(cpu.registers[A], val, cy));
 
@@ -967,7 +967,7 @@ pub fn and_a_l(cpu: &mut CPU) {
 
 pub fn and_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     cpu.registers[A] &= val;
     set_flags(cpu, N_FLAG | C_FLAG, false);
     set_flags(cpu, H_FLAG, true);
@@ -1014,7 +1014,7 @@ pub fn xor_a_l(cpu: &mut CPU) {
 
 pub fn xor_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     cpu.registers[A] ^= val;
     set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
@@ -1060,7 +1060,7 @@ pub fn or_a_l(cpu: &mut CPU) {
 
 pub fn or_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     cpu.registers[A] |= val;
     set_flags(cpu, N_FLAG | C_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, cpu.registers[A] == 0);
@@ -1106,7 +1106,7 @@ pub fn cp_a_l(cpu: &mut CPU) {
 
 pub fn cp_a_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let val = cpu.mem.read(dir as usize);
+    let val = cpu.bus.read(dir as usize);
     set_flags(cpu, Z_FLAG, cpu.registers[A] == val);
     set_flags(cpu, N_FLAG, true);
     set_flags(cpu, H_FLAG, check_half_borrow(cpu.registers[A], val));
@@ -1428,14 +1428,14 @@ pub fn rlc_l(cpu: &mut CPU) {
 
 pub fn rlc_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let mut rot = cpu.mem.read(dir as usize);
+    let mut rot = cpu.bus.read(dir as usize);
     let carry = rot & 0b10000000;
 
     set_flags(cpu, C_FLAG, carry == 0b10000000);
 
     rot <<= 1;
     rot |= carry >> 7;
-    cpu.mem.write(dir as usize, rot);
+    cpu.bus.write(dir as usize, rot);
 
     set_flags(cpu, N_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, rot == 0);
@@ -1489,14 +1489,14 @@ pub fn rrc_l(cpu: &mut CPU) {
 
 pub fn rrc_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let mut rot = cpu.mem.read(dir as usize);
+    let mut rot = cpu.bus.read(dir as usize);
     let carry = rot & 1;
 
     set_flags(cpu, C_FLAG, carry == 0b00000001);
 
     rot >>= 1;
     rot |= carry << 7;
-    cpu.mem.write(dir as usize, rot);
+    cpu.bus.write(dir as usize, rot);
 
     set_flags(cpu, N_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, rot == 0);
@@ -1551,7 +1551,7 @@ pub fn rl_l(cpu: &mut CPU) {
 
 pub fn rl_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let mut rot = cpu.mem.read(dir as usize);
+    let mut rot = cpu.bus.read(dir as usize);
     let carry = rot & 0b10000000;
     let prev_carry = cpu.registers[F] & C_FLAG;
 
@@ -1559,7 +1559,7 @@ pub fn rl_hlind(cpu: &mut CPU) {
 
     rot <<= 1;
     rot |= prev_carry >> 4;
-    cpu.mem.write(dir as usize, rot);
+    cpu.bus.write(dir as usize, rot);
 
     set_flags(cpu, N_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, rot == 0);
@@ -1614,7 +1614,7 @@ pub fn rr_l(cpu: &mut CPU) {
 
 pub fn rr_hlind(cpu: &mut CPU) {
     let dir = cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100;
-    let mut rot = cpu.mem.read(dir as usize);
+    let mut rot = cpu.bus.read(dir as usize);
     let carry = rot & 0b00000001;
     let prev_carry = cpu.registers[F] & C_FLAG;
 
@@ -1622,7 +1622,7 @@ pub fn rr_hlind(cpu: &mut CPU) {
 
     rot >>= 1;
     rot |= prev_carry << 3;
-    cpu.mem.write(dir as usize, rot);
+    cpu.bus.write(dir as usize, rot);
 
     set_flags(cpu, N_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, rot == 0);
@@ -1672,11 +1672,11 @@ pub fn sla_l(cpu: &mut CPU) {
 
 pub fn sla_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let rot = cpu.mem.read(dir).wrapping_shl(1);
+    let rot = cpu.bus.read(dir).wrapping_shl(1);
 
-    set_flags(cpu, C_FLAG, cpu.mem.read(dir) & 0b10000000 == 0b10000000);
+    set_flags(cpu, C_FLAG, cpu.bus.read(dir) & 0b10000000 == 0b10000000);
 
-    cpu.mem.write(dir, rot);
+    cpu.bus.write(dir, rot);
     set_flags(cpu, N_FLAG | H_FLAG, false);
     set_flags(cpu, Z_FLAG, rot == 0);
 
@@ -1726,14 +1726,14 @@ pub fn sra_l(cpu: &mut CPU) {
 
 pub fn sra_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let rot = cpu.mem.read(dir).wrapping_shr(1);
-    let msb = cpu.mem.read(dir) & 0b10000000; 
+    let rot = cpu.bus.read(dir).wrapping_shr(1);
+    let msb = cpu.bus.read(dir) & 0b10000000; 
     
 
-    set_flags(cpu, C_FLAG, cpu.mem.read(dir) & 0x01 == 0x01);
+    set_flags(cpu, C_FLAG, cpu.bus.read(dir) & 0x01 == 0x01);
 
-    cpu.mem.write(dir, rot | msb);
-    set_flags(cpu, Z_FLAG, cpu.mem.read(dir) == 0);
+    cpu.bus.write(dir, rot | msb);
+    set_flags(cpu, Z_FLAG, cpu.bus.read(dir) == 0);
     set_flags(cpu, N_FLAG | H_FLAG, false);
 
     
@@ -1782,11 +1782,11 @@ pub fn swap_l(cpu: &mut CPU) {
 pub fn swap_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
 
-    let upper = cpu.mem.read(dir) & 0xF0;
-    let lower = cpu.mem.read(dir) & 0x0F;
-    cpu.mem.write(dir, (upper >> 4) + (lower << 4));
+    let upper = cpu.bus.read(dir) & 0xF0;
+    let lower = cpu.bus.read(dir) & 0x0F;
+    cpu.bus.write(dir, (upper >> 4) + (lower << 4));
 
-    set_flags(cpu, Z_FLAG, cpu.mem.read(dir) == 0);
+    set_flags(cpu, Z_FLAG, cpu.bus.read(dir) == 0);
     set_flags(cpu, N_FLAG | H_FLAG | C_FLAG, false);
 
     cpu.cycles += 16;
@@ -1833,14 +1833,14 @@ pub fn srl_l(cpu: &mut CPU) {
 
 pub fn srl_hlind(cpu: &mut CPU) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let rot = cpu.mem.read(dir) >> 1;
+    let rot = cpu.bus.read(dir) >> 1;
     
 
-    set_flags(cpu, C_FLAG, cpu.mem.read(dir) & 0b00000001 == 0b00000001);
+    set_flags(cpu, C_FLAG, cpu.bus.read(dir) & 0b00000001 == 0b00000001);
     set_flags(cpu, Z_FLAG, rot == 0);
     set_flags(cpu, N_FLAG | H_FLAG, false);
 
-    cpu.mem.write(dir, rot);
+    cpu.bus.write(dir, rot);
 
     cpu.cycles += 16;
 }
@@ -1860,7 +1860,7 @@ fn bit_pos_reg(cpu: &mut CPU, reg: usize, b: u8) {
 fn bit_pos_hlind(cpu: &mut CPU, b: u8) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
 
-    set_flags(cpu, Z_FLAG, cpu.mem.read(dir) & b == 0);
+    set_flags(cpu, Z_FLAG, cpu.bus.read(dir) & b == 0);
     set_flags(cpu, N_FLAG, false);
     set_flags(cpu, H_FLAG, true);
     
@@ -2130,8 +2130,8 @@ fn res_pos_reg(cpu: &mut CPU, reg: usize, b: u8) {
 
 fn res_pos_hlind(cpu: &mut CPU, b: u8) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let val = cpu.mem.read(dir) & !b;
-    cpu.mem.write(dir, val);
+    let val = cpu.bus.read(dir) & !b;
+    cpu.bus.write(dir, val);
     cpu.cycles += 16;
 }
 
@@ -2398,8 +2398,8 @@ fn set_pos_reg(cpu: &mut CPU, reg: usize, b: u8) {
 
 fn set_pos_hlind(cpu: &mut CPU, b: u8) {
     let dir = (cpu.registers[L] as u16 + cpu.registers[H] as u16 * 0x100) as usize;
-    let val = cpu.mem.read(dir) | b;
-    cpu.mem.write(dir, val);
+    let val = cpu.bus.read(dir) | b;
+    cpu.bus.write(dir, val);
     cpu.cycles += 16;
 }
 
@@ -2734,9 +2734,9 @@ pub fn jr_c_i8(cpu: &mut CPU) {
 
 fn ret_flag(cpu: &mut CPU, flag: bool) {
     if flag {
-        let pc_low = cpu.mem.read(cpu.sp as usize);
+        let pc_low = cpu.bus.read(cpu.sp as usize);
         cpu.sp = cpu.sp.wrapping_add(1);
-        let pc_high = cpu.mem.read(cpu.sp as usize);
+        let pc_high = cpu.bus.read(cpu.sp as usize);
         cpu.sp = cpu.sp.wrapping_add(1);
         cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
         cpu.cycles += 20;
@@ -2766,18 +2766,18 @@ pub fn ret_c(cpu: &mut CPU) {
 }
 
 pub fn ret(cpu: &mut CPU) {
-    let pc_low = cpu.mem.read(cpu.sp as usize);
+    let pc_low = cpu.bus.read(cpu.sp as usize);
     cpu.sp = cpu.sp.wrapping_add(1);
-    let pc_high = cpu.mem.read(cpu.sp as usize);
+    let pc_high = cpu.bus.read(cpu.sp as usize);
     cpu.sp = cpu.sp.wrapping_add(1);
     cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
     cpu.cycles += 16;
 }
 
 pub fn reti(cpu: &mut CPU) {
-    let pc_low = cpu.mem.read(cpu.sp as usize);
+    let pc_low = cpu.bus.read(cpu.sp as usize);
     cpu.sp = cpu.sp.wrapping_add(1);
-    let pc_high = cpu.mem.read(cpu.sp as usize);
+    let pc_high = cpu.bus.read(cpu.sp as usize);
     cpu.sp = cpu.sp.wrapping_add(1);
     cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
     cpu.ime = true;
@@ -2838,9 +2838,9 @@ fn call_flag_u16(cpu: &mut CPU, flag: bool) {
         cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
 
         cpu.sp = cpu.sp.wrapping_sub(1);
-        cpu.mem.write(cpu.sp as usize, (pc_ant / 0x100) as u8);
+        cpu.bus.write(cpu.sp as usize, (pc_ant / 0x100) as u8);
         cpu.sp = cpu.sp.wrapping_sub(1);
-        cpu.mem.write(cpu.sp as usize, pc_ant as u8);
+        cpu.bus.write(cpu.sp as usize, pc_ant as u8);
 
         cpu.cycles += 24;
         return;
@@ -2873,9 +2873,9 @@ pub fn call_u16(cpu: &mut CPU) {
     let pc_high = cpu.fetch() as usize;
 
     cpu.sp = cpu.sp.wrapping_sub(1);
-    cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
+    cpu.bus.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
     cpu.sp = cpu.sp.wrapping_sub(1);
-    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
+    cpu.bus.write(cpu.sp as usize, cpu.pc as u8);
 
     cpu.pc = pc_low as u16 + pc_high as u16 * 0x100;
 
@@ -2884,9 +2884,9 @@ pub fn call_u16(cpu: &mut CPU) {
 
 fn rst_dir(cpu: &mut CPU, dir: u8) {
     cpu.sp = cpu.sp.wrapping_sub(1);
-    cpu.mem.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
+    cpu.bus.write(cpu.sp as usize, (cpu.pc / 0x100) as u8);
     cpu.sp = cpu.sp.wrapping_sub(1);
-    cpu.mem.write(cpu.sp as usize, cpu.pc as u8);
+    cpu.bus.write(cpu.sp as usize, cpu.pc as u8);
     
 
     cpu.pc = dir as u16;

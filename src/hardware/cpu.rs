@@ -1,4 +1,4 @@
-use crate::hardware::mmu::MMU;
+use crate::hardware::bus::Bus;
 use crate::hardware::inst_set::*;
 
 // Registros
@@ -18,13 +18,11 @@ const TIMER: u8 = 2;
 const SERIAL: u8 = 3;
 const JOYPAD: u8 = 4;
 
-const FREQ: u32 = 4194304;
-
 pub struct CPU {
     pub registers: [u8; 8],
     pub pc: u16,
     pub sp: u16,
-    pub mem: MMU,
+    pub bus: Bus,
     pub cycles: u64,
     pub stop: bool,
     pub halt: bool,
@@ -45,12 +43,12 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn new(bus: Bus) -> Self {
         CPU {
             registers: [0x00; 8],
             pc: 0x0000,
             sp: 0x0000,
-            mem: MMU::new(),
+            bus: bus,
             cycles: 0,
             stop: false,
             halt: false,
@@ -106,23 +104,26 @@ impl CPU {
         }
     }
 
-    pub fn reset(&mut self) {
-        self.registers[A] = 0x01;
-        self.registers[F] = 0x80;
-        self.registers[B] = 0x00;
-        self.registers[C] = 0x13;
-        self.registers[D] = 0x00;
-        self.registers[E] = 0xD8;
-        self.registers[H] = 0x01;
-        self.registers[L] = 0x4D;
-
-        self.sp = 0xFFFE;
-        self.mem.reset();
-        self.pc = 0x100;
+    pub fn reset(&mut self, enable_boot_rom: bool) {
+        if !enable_boot_rom {
+            self.registers[A] = 0x01;
+            self.registers[F] = 0x80;
+            self.registers[B] = 0x00;
+            self.registers[C] = 0x13;
+            self.registers[D] = 0x00;
+            self.registers[E] = 0xD8;
+            self.registers[H] = 0x01;
+            self.registers[L] = 0x4D;
+            self.sp = 0xFFFE;
+            self.pc = 0x100;
+            self.bus.reset();
+        }
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> u64{
         self.update_ime();
+
+        let cycles_temp = self.cycles;
 
         self.interrupt();
 
@@ -134,10 +135,12 @@ impl CPU {
         }
 
         self.update_timers();
+
+        return self.cycles - cycles_temp;
     }
 
     pub fn fetch(&mut self) -> u8 {
-        let val = self.mem.read(self.pc as usize);
+        let val = self.bus.read(self.pc as usize);
         self.pc = self.pc.wrapping_add(1);
         val
     }
@@ -166,22 +169,22 @@ impl CPU {
 
     fn get_ie(&mut self) -> u8 {
         self.cycles += 4;
-        self.mem.read(0xFFFF)
+        self.bus.read(0xFFFF)
     }
 
     fn get_if(&mut self) -> u8 {
         self.cycles += 4;
-        self.mem.read(0xFF0F)
+        self.bus.read(0xFF0F)
     }
 
     pub fn set_if(&mut self, int: usize, cond: bool) {
         let flag: u8 = 1 << int;
         if cond {
             let if_reg = self.get_if();
-            self.mem.write(0xFF0F, if_reg | flag);
+            self.bus.write(0xFF0F, if_reg | flag);
         } else {
             let if_reg = self.get_if();
-            self.mem.write(0xFF0F, if_reg & !flag);
+            self.bus.write(0xFF0F, if_reg & !flag);
         }
     }
 
@@ -219,9 +222,9 @@ impl CPU {
 
         // Llevar PC a la pila
         self.sp = self.sp.wrapping_sub(1);
-        self.mem.write(self.sp as usize, (self.pc / 0x100) as u8);
+        self.bus.write(self.sp as usize, (self.pc / 0x100) as u8);
         self.sp = self.sp.wrapping_sub(1);
-        self.mem.write(self.sp as usize, self.pc as u8);
+        self.bus.write(self.sp as usize, self.pc as u8);
 
         // Tratar interrupcion
         self.pc = 0x40 + int_offset[int];
@@ -230,10 +233,10 @@ impl CPU {
     fn update_timers(&mut self) {
         if (self.cycles / 256) as u32 > self.div_timer {
             self.div_timer = (self.cycles / 256) as u32;
-            self.mem.increase_div();
+            self.bus.increase_div();
         }
 
-        let tac = self.mem.read(0xFF07);
+        let tac = self.bus.read(0xFF07);
         let timer_enable = (tac & 0b00000100) != 0;
 
         // TODO si al final hago la CGB, hay que dividir esto entre la velocidad (1 o 2, dependiendo de la seleccionada)
@@ -247,11 +250,11 @@ impl CPU {
 
         if (self.cycles / tima_freq_divider) as u32 > self.tima_timer && timer_enable {
             self.tima_timer = (self.cycles / tima_freq_divider) as u32;
-            let tima_int = self.mem.increase_tima();
+            let tima_int = self.bus.increase_tima();
 
             if tima_int {
-                let tma = self.mem.read(0xFF06);
-                self.mem.write(0xFF05, tma);
+                let tma = self.bus.read(0xFF06);
+                self.bus.write(0xFF05, tma);
                 self.set_int(TIMER);
             }
         }
@@ -268,6 +271,6 @@ impl CPU {
             _ => panic!("Interrupción erronea")
         }
 
-        self.mem.write(0xFF0F, int_f);
+        self.bus.write(0xFF0F, int_f);
     }
 }
