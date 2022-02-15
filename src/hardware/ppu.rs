@@ -4,7 +4,7 @@ use sfml::graphics::Image;
 
 type Tile = [[TilePixelValue; 8]; 8];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum TilePixelValue {
     Zero,
     One,
@@ -149,31 +149,35 @@ impl PPU {
         Image::create_from_pixels(160, 144, &self.lcd_pixels).unwrap()
     }
 
+    fn check_mode(&mut self) {
+        if self.cycles % 456 < 80 && self.regs[LY] < 144 {
+            self.mode = PpuMode::OamScaning;
+        } else if self.cycles % 456 < 252 && self.regs[LY] < 144 {
+            self.mode = PpuMode::Drawing;
+        } else if self.regs[LY] < 144 {
+            self.mode = PpuMode::HBlank;
+        } else {
+            self.mode = PpuMode::VBlank;
+        }
+    }
+
     pub fn cycle(&mut self, cycles: u8) {
         // TODO Hacer cada modo
         let mut cycles_to_tick = cycles;
 
         while cycles_to_tick > 0 {
-            if self.cycles % 456 < 80 && self.regs[LY] < 144 {
-                self.mode = PpuMode::OamScaning;
-            } else if self.cycles % 456 < 252 && self.regs[LY] < 144 {
-                self.mode = PpuMode::Drawing;
-            } else if self.regs[LY] < 144 {
-                self.mode = PpuMode::HBlank;
-            } else {
-                self.mode = PpuMode::VBlank;
-            }
+            self.check_mode();
 
             match self.mode {
                 PpuMode::HBlank => {
 
-                    self.fetcher_x = 0;
-                    self.background_fifo.clear();
-                    self.x_counter = 0;
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b00;
                 },
                 PpuMode::OamScaning => {
 
+                    self.fetcher_x = 0;
+                    //self.background_fifo.clear();
+                    self.x_counter = 0;
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b10;
                 },
                 PpuMode::Drawing => {
@@ -210,7 +214,7 @@ impl PPU {
 
 
     fn fetcher_cycle(&mut self, cycles: &u8) {
-        if cycles % 2 != 0 {
+        if cycles % 2 == 0 {
             return;
         }
 
@@ -236,6 +240,10 @@ impl PPU {
                 };
 
                 self.fetcher_tile = self.read(x + y + self.fetcher_tilemap) as usize;
+
+                // if self.fetcher_tile == 0x0D {
+                //     let _a = 1;
+                // }
 
                 self.fetcher_state = FetcherState::GetDataLow;
             },
@@ -284,10 +292,6 @@ impl PPU {
                     self.background_fifo.push_back(value);
                 }
 
-                if self.regs[LY] == 72 {
-                    let _a = 0;
-                }
-
                 self.fetcher_x = self.fetcher_x.wrapping_add(1) % 32;
 
                 self.fetcher_state = FetcherState::GetTile;
@@ -296,14 +300,14 @@ impl PPU {
     }
 
     fn fifo_cycle(&mut self) {
-        if self.background_fifo.is_empty() {
+        if self.background_fifo.len() <= 8 {
             return;
         }
         let pixel = self.background_fifo.pop_front().unwrap();
-        
+
         let pos = (self.x_counter + self.regs[LY] as usize * 160) * 4;
         self.x_counter += 1;
-        if self.x_counter >= 160 {
+        if self.x_counter > 160 {
             return;
         }
 

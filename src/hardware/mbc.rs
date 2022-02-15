@@ -46,7 +46,7 @@ impl MbcController for MBC1 {
                 self.rom[dir]
             } else {
                 let bank = self.rom_bank_number;
-                self.rom[dir + 0x4000 * bank as usize]
+                self.rom[(dir - 0x4000) + 0x4000 * bank as usize]
             }
         } else {
             // TODO BANK Mode 1
@@ -60,6 +60,9 @@ impl MbcController for MBC1 {
         } else if dir < 0x4000 {
             // TODO Añadir caso de que el cartucho sea grande
             self.rom_bank_number = val & 0b00011111;
+
+            // TODO self.mask_rom_number_to_size();
+
             if self.rom_bank_number == 0 {
                 self.rom_bank_number = 1;
             }

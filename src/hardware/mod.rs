@@ -30,7 +30,7 @@ impl GameBoy {
 
         match mbc {
             0x00 => self.cpu.bus.rom = Some(Box::new(MBC0::new(&rom))),
-            0x01 => self.cpu.bus.rom = Some(Box::new(MBC0::new(&rom))),
+            0x01 => self.cpu.bus.rom = Some(Box::new(MBC1::new(&rom))),
             // 0x01 => self.mbc1(),
             _ => panic!("MBC Erroneo o no implementado."),
         }
