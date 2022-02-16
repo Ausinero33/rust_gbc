@@ -124,11 +124,10 @@ impl CPU {
     }
 
     pub fn cycle(&mut self) -> u64{
+        let cycles_temp = self.cycles;
         self.update_ime();
 
-        let cycles_temp = self.cycles;
-
-        self.interrupt();
+        //self.interrupt();
 
         if self.halt {
             nop(self);
@@ -191,12 +190,13 @@ impl CPU {
         }
     }
 
-    fn interrupt(&mut self) {
+    pub fn interrupt(&mut self) -> u64 {
+        let cycles_temp = self.cycles;
         if !self.ime {
             if self.get_ie() & self.get_if() != 0 {
                 self.halt = false;
             }
-            return;
+            return self.cycles - cycles_temp;
         }
 
         self.halt = false;
@@ -211,9 +211,10 @@ impl CPU {
                 self.ime = false;
                 self.set_if(i, false);
                 self.interrupt_handler(i);
-                return;
+                return self.cycles - cycles_temp;
             }
         }
+        return self.cycles - cycles_temp;
     }
 
     fn interrupt_handler(&mut self, int: usize) {

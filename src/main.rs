@@ -10,7 +10,7 @@ fn main() {
         Style::CLOSE,
         &Default::default(),
     );
-    window.set_framerate_limit(59);
+    window.set_framerate_limit(60);
 
     let roms = [
         //"roms/individual/01-special.gb",
@@ -24,8 +24,8 @@ fn main() {
         // "roms/individual/09-op r,r.gb",
         // "roms/individual/10-bit ops.gb",
         // "roms/individual/11-op a,(hl).gb"
-        //"roms/Dr. Mario (World).gb"
-        "roms/cpu_instrs.gb"
+        "roms/Dr. Mario (World).gb"
+        //"roms/cpu_instrs.gb"
         //"roms/Tetris (World) (Rev A).gb"
     ];
 
@@ -36,12 +36,13 @@ fn main() {
     
         'inner: loop {
             // Controlar si se sale
-
+            //println!("{:04X}", gameboy.cpu.pc);
             while let Some(event) = window.poll_event() {
                 match event {
                     Event::Closed | Event::KeyPressed {
                         code: Key::ESCAPE, ..
                     } => break 'inner,
+                    Event::KeyPressed {code: Key::A, ..} => gameboy.debug_background(),
                     _ => {}
                 }
             }

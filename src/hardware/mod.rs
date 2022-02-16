@@ -41,19 +41,21 @@ impl GameBoy {
     }
 
     pub fn cycle(&mut self) {
-        for _i in 0..70224 {
-            //println!("{:02X}", self.cpu.pc);
+        let mut cycles = 0;
+        while cycles < 70224 {
+            let mut cycles_to_run = self.cpu.interrupt();
+            // if self.cpu.pc == 0x40 {
+            //     // self.debug_vram();
+            //     self.debug_background();
+            //     // self.debug_frame();
+            //     let _a = 1;
+            // }
 
-            if self.cpu.pc == 0x48 {
-                // self.debug_vram();
-                // self.debug_background();
-                // self.debug_frame();
-                let _a = 1;
-            }
-
-            let cycles_to_run = self.cpu.cycle();
+            
+            cycles_to_run += self.cpu.cycle();
             self.cpu.bus.cycle(cycles_to_run as u8);
             self.output_temp();
+            cycles += cycles_to_run;
         };
     }
 
@@ -73,8 +75,7 @@ impl GameBoy {
         window.draw(&sprite);
     }
 
-
-    fn debug_vram(&self) {
+    pub fn debug_vram(&self) {
         let mut step = 0;
         let mut low = 0;
         let mut high;
@@ -116,13 +117,13 @@ impl GameBoy {
         }
     }
 
-    fn debug_background(&self) {
+    pub fn debug_background(&self) {
         for i in 0..0x400 {
             println!("{:04X}: {:02X}", 0x9800 + i, self.cpu.bus.ppu.vram[0x1800 + i]);
         }
     }
 
-    fn debug_frame(&self) {
+    pub fn debug_frame(&self) {
         for row in 0..144 {
             for col in 0..160 {
                 match (self.cpu.bus.ppu.lcd_pixels[(row * 160 + col) * 4], self.cpu.bus.ppu.lcd_pixels[(row * 160 + col) * 4 + 1], self.cpu.bus.ppu.lcd_pixels[(row * 160 + col) * 4 + 2]) {

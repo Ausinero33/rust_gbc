@@ -170,8 +170,6 @@ impl PPU {
         }
 
         while cycles_to_tick > 0 {
-            //self.check_mode();
-
             self.regs[STAT] &= 0b10000111;
 
             match self.mode {
@@ -210,6 +208,7 @@ impl PPU {
                         self.fetcher_x = 0;
                         self.lcd_x = 0;
                         self.background_fifo.clear();
+                        self.fetcher_state = FetcherState::GetTile;
                     }
                 },
                 PpuMode::VBlank => {
@@ -235,7 +234,7 @@ impl PPU {
 
             self.cycles += 1;
             self.regs[LY] = ((self.cycles / 456) % 154) as u8;
-            self.scanline_counter = ((self.scanline_counter + 1) % 456) as usize;
+            self.scanline_counter = (self.cycles % 456) as usize;
             cycles_to_tick -= 1;
         }
 
@@ -278,12 +277,6 @@ impl PPU {
             FetcherState::GetDataLow => {
                 let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
 
-                // if self.regs[LCDC] & 0b00010000 != 0 {
-                //     dir += 0x8000;
-                // } else {
-                //     dir += 0x8800;
-                // }
-
                 if self.regs[LCDC] & 0b00010000 != 0 {
                     if self.fetcher_tile <= 127 {
                         dir += 0x8000;
@@ -292,9 +285,9 @@ impl PPU {
                     }
                 } else {
                     if self.fetcher_tile >= 127 {
-                        dir += 0x9000;
-                    } else {
                         dir += 0x8800;
+                    } else {
+                        dir += 0x9000;
                     }
                 }
 
@@ -305,12 +298,6 @@ impl PPU {
             FetcherState::GetDataHigh => {
                 let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
 
-                // if self.regs[LCDC] & 0b00010000 != 0 {
-                //     dir += 0x8000;
-                // } else {
-                //     dir += 0x8800;
-                // }
-
                 if self.regs[LCDC] & 0b00010000 != 0 {
                     if self.fetcher_tile <= 127 {
                         dir += 0x8000;
@@ -319,9 +306,9 @@ impl PPU {
                     }
                 } else {
                     if self.fetcher_tile >= 127 {
-                        dir += 0x9000;
-                    } else {
                         dir += 0x8800;
+                    } else {
+                        dir += 0x9000;
                     }
                 }
 
@@ -360,7 +347,7 @@ impl PPU {
         }
 
         // TODO Seguramente que esto este aqui significa que hay algo mal en algun sitio.
-        if self.scanline_counter < 86 || self.scanline_counter - 86 >= 160 || self.regs[LY] >= 144 {
+        if self.scanline_counter - 86 >= 160 || self.regs[LY] >= 144 {
             return;
         }
 
