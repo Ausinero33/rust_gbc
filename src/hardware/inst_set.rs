@@ -142,6 +142,7 @@ pub fn ld_l_u8(cpu: &mut CPU) {
 pub fn ld_hlind_u8(cpu: &mut CPU) {
     let val = cpu.fetch();
     u8_to_hlind(cpu, val);
+    cpu.cycles += 4;
 }
 
 pub fn ld_a_u8(cpu: &mut CPU) {
@@ -694,6 +695,7 @@ pub fn daa(cpu: &mut CPU) {
 pub fn scf(cpu: &mut CPU) {
     set_flags(cpu, C_FLAG, true);
     set_flags(cpu, N_FLAG | H_FLAG, false);
+    cpu.cycles += 4;
 }
 
 pub fn cpl(cpu: &mut CPU) {
@@ -706,6 +708,7 @@ pub fn ccf(cpu: &mut CPU) {
     let cond = get_carry(cpu) ^ 1 != 0;
     set_flags(cpu, C_FLAG, cond);
     set_flags(cpu, N_FLAG | H_FLAG, false);
+    cpu.cycles += 4;
 }
 
 fn add_a_reg(cpu: &mut CPU, reg_src: usize) {
@@ -1864,7 +1867,7 @@ fn bit_pos_hlind(cpu: &mut CPU, b: u8) {
     set_flags(cpu, N_FLAG, false);
     set_flags(cpu, H_FLAG, true);
     
-    cpu.cycles += 8;
+    cpu.cycles += 12;
 }
 
 pub fn bit_0_b(cpu: &mut CPU) {

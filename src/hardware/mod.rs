@@ -124,11 +124,11 @@ impl GameBoy {
         for row in 0..144 {
             for col in 0..160 {
                 match (self.cpu.bus.ppu.lcd_pixels[(row * 160 + col) * 4], self.cpu.bus.ppu.lcd_pixels[(row * 160 + col) * 4 + 1], self.cpu.bus.ppu.lcd_pixels[(row * 160 + col) * 4 + 2]) {
-                    (0x0F, 0x38, 0x0F) => print!("\u{2588}"),
-                    (0x30, 0x62, 0x30) => print!("\u{2593}"),
-                    (0x8B, 0xAC, 0x0F) => print!("\u{2592}"),
-                    (0x9B, 0xBC, 0x0F) => print!("\u{2591}"),
-                    _ => print!(""),
+                    (0xE0, 0xF8, 0xD0) => print!("\u{2588}"),
+                    (0x88, 0xC0, 0x70) => print!("\u{2593}"),
+                    (0x34, 0x68, 0x56) => print!("\u{2592}"),
+                    (0x08, 0x18, 0x20) => print!("\u{2591}"),
+                    _ => unreachable!()
                 }
             }
             println!();

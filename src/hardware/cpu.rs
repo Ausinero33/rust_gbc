@@ -39,8 +39,6 @@ pub struct CPU {
 
     div_timer: u32,
 
-    tima_timer: u32,
-
     inst_set: [fn(&mut CPU); 0x100],
     cb_set: [fn(&mut CPU); 0x100],
 }
@@ -62,8 +60,6 @@ impl CPU {
 
             op: 0,
             div_timer: 0,
-
-            tima_timer: 0,
 
             inst_set: [
 //              0x_0            0x_1            0x_2            0x_3            0x_4            0x_5            0x_6            0x_7            0x_8            0x_9            0x_A            0x_B            0x_C            0x_D            0x_E            0x_F        
@@ -125,6 +121,7 @@ impl CPU {
 
     pub fn cycle(&mut self) -> u64{
         let cycles_temp = self.cycles;
+    
         self.update_ime();
 
         //self.interrupt();
@@ -136,7 +133,7 @@ impl CPU {
             self.decode_execute(op);
         }
 
-        self.update_timers();
+        self.update_div();
 
         return self.cycles - cycles_temp;
     }
@@ -236,33 +233,10 @@ impl CPU {
         self.cycles += 4;
     }
 
-    fn update_timers(&mut self) {
+    fn update_div(&mut self) {
         if (self.cycles / 256) as u32 > self.div_timer {
             self.div_timer = (self.cycles / 256) as u32;
             self.bus.increase_div();
-        }
-
-        let tac = self.bus.read(0xFF07);
-        let timer_enable = (tac & 0b00000100) != 0;
-
-        // TODO si al final hago la CGB, hay que dividir esto entre la velocidad (1 o 2, dependiendo de la seleccionada)
-        let tima_freq_divider = match tac & 0b00000011 {
-            0b00 => 1024,
-            0b01 => 16,
-            0b10 => 64,
-            0b11 => 256,
-            _ => 0
-        };
-
-        if (self.cycles / tima_freq_divider) as u32 > self.tima_timer && timer_enable {
-            self.tima_timer = (self.cycles / tima_freq_divider) as u32;
-            let tima_int = self.bus.increase_tima();
-
-            if tima_int {
-                let tma = self.bus.read(0xFF06);
-                self.bus.write(0xFF05, tma);
-                self.bus.set_int(Interrupts::Timer);
-            }
         }
     }
 }
