@@ -43,13 +43,10 @@ impl GameBoy {
         
         while cycles < 70224 {
             let mut cycles_to_run = self.cpu.interrupt();
-            // if self.cpu.pc == 0x40 {
-            //     // self.debug_vram();
-            //     self.debug_background();
-            //     // self.debug_frame();
-            //     let _a = 1;
-            // }
 
+            if self.cpu.pc == 0x388 {
+                let _a = 0;
+            }
             
             cycles_to_run += self.cpu.cycle();
             self.cpu.bus.cycle(cycles_to_run as u8);

@@ -45,8 +45,7 @@ impl MbcController for MBC1 {
             if dir <= 0x3FFF {
                 self.rom[dir]
             } else {
-                let bank = self.rom_bank_number;
-                self.rom[(dir - 0x4000) + 0x4000 * bank as usize]
+                self.rom[(dir - 0x4000) + 0x4000 * self.rom_bank_number as usize]
             }
         } else {
             // TODO BANK Mode 1

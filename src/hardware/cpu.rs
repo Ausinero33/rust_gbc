@@ -247,10 +247,10 @@ impl CPU {
 
         // TODO si al final hago la CGB, hay que dividir esto entre la velocidad (1 o 2, dependiendo de la seleccionada)
         let tima_freq_divider = match tac & 0b00000011 {
-            0x00 => 1024,
-            0x01 => 16,
-            0x10 => 64,
-            0x11 => 256,
+            0b00 => 1024,
+            0b01 => 16,
+            0b10 => 64,
+            0b11 => 256,
             _ => 0
         };
 

@@ -2,8 +2,6 @@ use std::collections::VecDeque;
 
 use sfml::graphics::Image;
 
-type Tile = [[TilePixelValue; 8]; 8];
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum TilePixelValue {
     Zero,
@@ -47,7 +45,6 @@ const WX: usize = 11;
 pub struct PPU {
     pub vram: [u8; 0x2000],
     pub regs: [u8; 12],
-    tile_set: [Tile; 384],
 
     pub mode: PpuMode,
     cycles: u64,
@@ -78,7 +75,6 @@ impl PPU {
         PPU {
             vram: [0x00; 0x2000],
             regs: [0x00; 12],
-            tile_set: [[[TilePixelValue::Zero; 8]; 8]; 384],
 
             mode: PpuMode::OamScaning,
             cycles: 0,
@@ -123,48 +119,11 @@ impl PPU {
         // TODO Mejorar esto
         let index = dir - 0x8000;
         self.vram[index] = val;
-
-        if index >= 0x1800 {
-            return;
-        }
-
-        let normalized_index = index & 0xFFFE;
-        let byte1 = self.vram[normalized_index];
-        let byte2 = self.vram[normalized_index + 1];
-
-        let tile_index = index / 16;
-        let row_index = (index % 16) / 2;
-
-        for pixel_index in 0..8 {
-            let mask = 1 << (7 - pixel_index);
-            let lsb = byte1 & mask;
-            let msb = byte2 & mask;
-
-            let value = match (lsb != 0, msb != 0) {
-                (true, true) => TilePixelValue::Three,
-                (true, false) => TilePixelValue::Two,
-                (false, true) => TilePixelValue::One,
-                (false, false) => TilePixelValue::Zero,
-            };
-            self.tile_set[tile_index][row_index][pixel_index] = value;
-        }
     }
 
     pub fn get_image(&self) -> Image {
         Image::create_from_pixels(160, 144, &self.lcd_pixels).unwrap()
     }
-
-    // fn check_mode(&mut self) {
-    //     if self.cycles % 456 < 80 && self.regs[LY] < 144 {
-    //         self.mode = PpuMode::OamScaning;
-    //     } else if self.cycles % 456 < 252 && self.regs[LY] < 144 {
-    //         self.mode = PpuMode::Drawing;
-    //     } else if self.regs[LY] < 144 {
-    //         self.mode = PpuMode::HBlank;
-    //     } else {
-    //         self.mode = PpuMode::VBlank;
-    //     }
-    // }
 
     // (VBlank, STAT)
     pub fn cycle(&mut self, cycles: u8) -> (bool, bool) {
@@ -282,22 +241,6 @@ impl PPU {
                 self.fetcher_state = FetcherState::GetDataLow;
             },
             FetcherState::GetDataLow => {
-                // let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
-
-                // if self.regs[LCDC] & 0b00010000 != 0 {
-                //     if self.fetcher_tile <= 127 {
-                //         dir += 0x8000;
-                //     } else {
-                //         dir += 0x8800;
-                //     }
-                // } else {
-                //     if self.fetcher_tile >= 127 {
-                //         dir += 0x8800;
-                //     } else {
-                //         dir += 0x9000;
-                //     }
-                // }
-
                 let dir = if self.regs[LCDC] & 0b00010000 != 0 {
                     0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1
                 } else {
@@ -312,35 +255,17 @@ impl PPU {
                 self.fetcher_state = FetcherState::GetDataHigh;
             },
             FetcherState::GetDataHigh => {
-                // let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
-
-                // if self.regs[LCDC] & 0b00010000 != 0 {
-                //     if self.fetcher_tile <= 127 {
-                //         dir += 0x8000;
-                //     } else {
-                //         dir += 0x8800;
-                //     }
-                // } else {
-                //     if self.fetcher_tile >= 127 {
-                //         dir += 0x8800;
-                //     } else {
-                //         dir += 0x9000;
-                //     }
-                // }
-
-                
                 let dir = if self.regs[LCDC] & 0b00010000 != 0 {
                     0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
                 } else {
                     let signed_tile = self.fetcher_tile as i8 as i32;
                     let x_offset = 0x9000 + signed_tile * 0x10 as i32;
                     x_offset as usize + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
-                    //0x9000 + ((self.fetcher_tile as isize * 0x10) as usize) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
                 };
 
                 self.data_high = self.read(dir);
 
-                if self.fetcher_tile == 0xFE {
+                if self.fetcher_tile == 0x18 {
                     let _a = 1;
                 }
 
@@ -384,13 +309,6 @@ impl PPU {
         let pixel = self.background_fifo.pop_front().unwrap();
 
         let pos = (self.scanline_counter - 86 + self.regs[LY] as usize * 160) * 4;
-
-        let si = [
-            (0b00000011 & self.regs[BGP] as usize) >> 0,
-            (0b00001100 & self.regs[BGP] as usize) >> 2,
-            (0b00110000 & self.regs[BGP] as usize) >> 4,
-            (0b11000000 & self.regs[BGP] as usize) >> 6,
-        ];
 
         let palette = [
             self.colors[0b00000011 & self.regs[BGP] as usize],
