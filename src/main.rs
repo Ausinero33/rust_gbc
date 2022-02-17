@@ -23,10 +23,11 @@ fn main() {
         // "roms/individual/08-misc instrs.gb",
         // "roms/individual/09-op r,r.gb",
         // "roms/individual/10-bit ops.gb",
-        // "roms/individual/11-op a,(hl).gb"
-        "roms/Dr. Mario (World).gb"
-        //"roms/cpu_instrs.gb"
-        //"roms/Tetris (World) (Rev A).gb"
+        // "roms/individual/11-op a,(hl).gb",
+        //"roms/Dr. Mario (World).gb",
+        //"roms/cpu_instrs.gb",
+        //"roms/Tetris (World) (Rev A).gb",
+        "roms/Pokemon Red (UE) [S][!].gb"
     ];
 
     for i in roms {
@@ -43,6 +44,7 @@ fn main() {
                         code: Key::ESCAPE, ..
                     } => break 'inner,
                     Event::KeyPressed {code: Key::A, ..} => gameboy.debug_background(),
+                    Event::KeyPressed {code: Key::S, ..} => gameboy.debug_vram(),
                     _ => {}
                 }
             }

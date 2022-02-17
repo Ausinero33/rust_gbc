@@ -8,8 +8,6 @@ mod inst_set;
 mod mbc;
 pub mod bus;
 
-//const FREQ: u32 = 4_194_304;
-
 pub struct GameBoy {
     pub cpu: CPU,
     enable_boot_rom: bool,
@@ -42,6 +40,7 @@ impl GameBoy {
 
     pub fn cycle(&mut self) {
         let mut cycles = 0;
+        
         while cycles < 70224 {
             let mut cycles_to_run = self.cpu.interrupt();
             // if self.cpu.pc == 0x40 {
@@ -54,6 +53,7 @@ impl GameBoy {
             
             cycles_to_run += self.cpu.cycle();
             self.cpu.bus.cycle(cycles_to_run as u8);
+            
             self.output_temp();
             cycles += cycles_to_run;
         };

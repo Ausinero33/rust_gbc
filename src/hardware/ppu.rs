@@ -68,6 +68,7 @@ pub struct PPU {
     background_fifo: VecDeque<TilePixelValue>,
     lcd_x: usize,
     pub lcd_pixels: [u8; 144 * 160 * 4],
+    colors: [Color; 4]
 }
 
 
@@ -96,6 +97,12 @@ impl PPU {
             background_fifo: VecDeque::with_capacity(16),
             lcd_x: 0,
             lcd_pixels: [0x00; 144 * 160 * 4],
+            colors: [
+                Color{r: 0xE0, g: 0xF8, b: 0xD0},
+                Color{r: 0x88, g: 0xC0, b: 0x70},
+                Color{r: 0x34, g: 0x68, b: 0x56},
+                Color{r: 0x08, g: 0x18, b: 0x20},
+            ]
         }
     }
 
@@ -275,44 +282,67 @@ impl PPU {
                 self.fetcher_state = FetcherState::GetDataLow;
             },
             FetcherState::GetDataLow => {
-                let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
+                // let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
 
-                if self.regs[LCDC] & 0b00010000 != 0 {
-                    if self.fetcher_tile <= 127 {
-                        dir += 0x8000;
-                    } else {
-                        dir += 0x8800;
-                    }
+                // if self.regs[LCDC] & 0b00010000 != 0 {
+                //     if self.fetcher_tile <= 127 {
+                //         dir += 0x8000;
+                //     } else {
+                //         dir += 0x8800;
+                //     }
+                // } else {
+                //     if self.fetcher_tile >= 127 {
+                //         dir += 0x8800;
+                //     } else {
+                //         dir += 0x9000;
+                //     }
+                // }
+
+                let dir = if self.regs[LCDC] & 0b00010000 != 0 {
+                    0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1
                 } else {
-                    if self.fetcher_tile >= 127 {
-                        dir += 0x8800;
-                    } else {
-                        dir += 0x9000;
-                    }
-                }
+                    // TODO ARREGLAR ESTO
+                    let signed_tile = self.fetcher_tile as i8 as i32;
+                    let x_offset = 0x9000 + signed_tile * 0x10 as i32;
+                    x_offset as usize + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1
+                };
 
                 self.data_low = self.read(dir);
 
                 self.fetcher_state = FetcherState::GetDataHigh;
             },
             FetcherState::GetDataHigh => {
-                let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1;
+                // let mut dir = self.fetcher_tile * 0x10 + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8);
 
-                if self.regs[LCDC] & 0b00010000 != 0 {
-                    if self.fetcher_tile <= 127 {
-                        dir += 0x8000;
-                    } else {
-                        dir += 0x8800;
-                    }
+                // if self.regs[LCDC] & 0b00010000 != 0 {
+                //     if self.fetcher_tile <= 127 {
+                //         dir += 0x8000;
+                //     } else {
+                //         dir += 0x8800;
+                //     }
+                // } else {
+                //     if self.fetcher_tile >= 127 {
+                //         dir += 0x8800;
+                //     } else {
+                //         dir += 0x9000;
+                //     }
+                // }
+
+                
+                let dir = if self.regs[LCDC] & 0b00010000 != 0 {
+                    0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
                 } else {
-                    if self.fetcher_tile >= 127 {
-                        dir += 0x8800;
-                    } else {
-                        dir += 0x9000;
-                    }
-                }
+                    let signed_tile = self.fetcher_tile as i8 as i32;
+                    let x_offset = 0x9000 + signed_tile * 0x10 as i32;
+                    x_offset as usize + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
+                    //0x9000 + ((self.fetcher_tile as isize * 0x10) as usize) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
+                };
 
                 self.data_high = self.read(dir);
+
+                if self.fetcher_tile == 0xFE {
+                    let _a = 1;
+                }
 
                 self.fetcher_state = FetcherState::PushToFIFO;
             },
@@ -355,31 +385,52 @@ impl PPU {
 
         let pos = (self.scanline_counter - 86 + self.regs[LY] as usize * 160) * 4;
 
+        let si = [
+            (0b00000011 & self.regs[BGP] as usize) >> 0,
+            (0b00001100 & self.regs[BGP] as usize) >> 2,
+            (0b00110000 & self.regs[BGP] as usize) >> 4,
+            (0b11000000 & self.regs[BGP] as usize) >> 6,
+        ];
+
+        let palette = [
+            self.colors[0b00000011 & self.regs[BGP] as usize],
+            self.colors[(0b00001100 & self.regs[BGP] as usize) >> 2],
+            self.colors[(0b00110000 & self.regs[BGP] as usize) >> 4],
+            self.colors[(0b11000000 & self.regs[BGP] as usize) >> 6],
+        ];
+
         match pixel {
             TilePixelValue::Zero => {
-                self.lcd_pixels[pos] = 0x9B;
-                self.lcd_pixels[pos + 1] = 0xBC;
-                self.lcd_pixels[pos + 2] = 0x0F;
+                self.lcd_pixels[pos] = palette[0].r;
+                self.lcd_pixels[pos + 1] = palette[0].g;
+                self.lcd_pixels[pos + 2] = palette[0].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             },
             TilePixelValue::One => {
-                self.lcd_pixels[pos] = 0x8B;
-                self.lcd_pixels[pos + 1] = 0xAC;
-                self.lcd_pixels[pos + 2] = 0x0F;
+                self.lcd_pixels[pos] = palette[1].r;
+                self.lcd_pixels[pos + 1] = palette[1].g;
+                self.lcd_pixels[pos + 2] = palette[1].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
             TilePixelValue::Two => {
-                self.lcd_pixels[pos] = 0x30;
-                self.lcd_pixels[pos + 1] = 0x62;
-                self.lcd_pixels[pos + 2] = 0x30;
+                self.lcd_pixels[pos] = palette[2].r;
+                self.lcd_pixels[pos + 1] = palette[2].g;
+                self.lcd_pixels[pos + 2] = palette[2].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
             TilePixelValue::Three => {
-                self.lcd_pixels[pos] = 0x0F;
-                self.lcd_pixels[pos + 1] = 0x38;
-                self.lcd_pixels[pos + 2] = 0x0F;
+                self.lcd_pixels[pos] = palette[3].r;
+                self.lcd_pixels[pos + 1] = palette[3].g;
+                self.lcd_pixels[pos + 2] = palette[3].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct Color {
+    r: u8,
+    g: u8,
+    b: u8,
 }
