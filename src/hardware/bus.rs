@@ -70,13 +70,24 @@ impl Bus {
                 };
                 self.wram[dir - 0xE000]
             },
-            0xFE00 ..= 0xFFFF => {
-                if dir >= 0xFF40 && dir <= 0xFF4B {
-                    self.ppu.regs[dir - 0xFF40]
-                } else {
-                    self.hram[dir - 0xFE00]
+            0xFE00 ..= 0xFE9F => /* TODO OAM Read */ self.hram[dir - 0xFE00],
+            0xFEA0 ..= 0xFEFF => 0x00,
+            0xFF00 ..= 0xFF7F => {
+                match dir {
+                    0xFF00 => 0x01,
+                    0xFF04 => self.hram[dir - 0xFE00],
+                    0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40],
+                    _ => self.hram[dir - 0xFE00],
                 }
-            },
+            }
+            0xFF80 ..= 0xFFFF => self.hram[dir - 0xFE00],
+            // 0xFE00 ..= 0xFFFF => {
+            //     if dir >= 0xFF40 && dir <= 0xFF4B {
+            //         self.ppu.regs[dir - 0xFF40]
+            //     } else {
+            //         self.hram[dir - 0xFE00]
+            //     }
+            // },
             _ => unreachable!()
         }
     }
@@ -93,19 +104,21 @@ impl Bus {
             0xA000 ..= 0xBFFF => self.eram[dir - 0xA000] = val,
             0xC000 ..= 0xDFFF => self.wram[dir - 0xC000] = val,
             0xE000 ..= 0xFDFF => self.wram[dir - 0xE000] = val,
-            0xFE00 ..= 0xFFFF => {
-                if dir >= 0xFEA0 && dir <= 0xFEFF {
-                    return;
-                } else if dir >= 0xFF40 && dir <= 0xFF4B {
-                    self.ppu.regs[dir - 0xFF40] = val;
-                    return;
-                } else if dir == 0xFF04 {
-                    self.hram[dir - 0xFE00] = 0;
-                    return;
+            0xFE00 ..= 0xFE9F => /* TODO OAM Write */ self.hram[dir - 0xFE00] = val,
+            0xFEA0 ..= 0xFEFF => {},
+            0xFF00 ..= 0xFF7F => {
+                match dir {
+                    0xFF04 => self.hram[dir - 0xFE00] = 0,
+                    0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40] = val,
+                    _ => self.hram[dir - 0xFE00] = val,
                 }
-                self.hram[dir - 0xFE00] = val
-            },
+            }
+            0xFF80 ..= 0xFFFF => self.hram[dir - 0xFE00] = val,
             _ => unreachable!()
+        }
+
+        if dir == 0xFF40 {
+            let _a = 1;
         }
     }
 

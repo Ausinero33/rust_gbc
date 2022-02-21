@@ -65,7 +65,8 @@ pub struct PPU {
     background_fifo: VecDeque<TilePixelValue>,
     lcd_x: usize,
     pub lcd_pixels: [u8; 144 * 160 * 4],
-    colors: [Color; 4]
+    colors: [Color; 4],
+    palette: [Color; 4],
 }
 
 
@@ -94,6 +95,12 @@ impl PPU {
             lcd_x: 0,
             lcd_pixels: [0x00; 144 * 160 * 4],
             colors: [
+                Color{r: 0xE0, g: 0xF8, b: 0xD0},
+                Color{r: 0x88, g: 0xC0, b: 0x70},
+                Color{r: 0x34, g: 0x68, b: 0x56},
+                Color{r: 0x08, g: 0x18, b: 0x20},
+            ],
+            palette: [
                 Color{r: 0xE0, g: 0xF8, b: 0xD0},
                 Color{r: 0x88, g: 0xC0, b: 0x70},
                 Color{r: 0x34, g: 0x68, b: 0x56},
@@ -135,6 +142,13 @@ impl PPU {
             return int;
         }
 
+        self.palette = [
+            self.colors[0b00000011 & self.regs[BGP] as usize],
+            self.colors[(0b00001100 & self.regs[BGP] as usize) >> 2],
+            self.colors[(0b00110000 & self.regs[BGP] as usize) >> 4],
+            self.colors[(0b11000000 & self.regs[BGP] as usize) >> 6],
+        ];
+
         while cycles_to_tick > 0 {
             self.regs[STAT] &= 0b10000111;
 
@@ -168,7 +182,7 @@ impl PPU {
 
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b11;
 
-                    if self.scanline_counter == 251 {
+                    if self.lcd_x == 160 {
                         self.mode = PpuMode::HBlank;
                         self.regs[STAT] |= 0b00001000;
                         self.fetcher_x = 0;
@@ -301,48 +315,38 @@ impl PPU {
             return;
         }
 
-        // TODO Seguramente que esto este aqui significa que hay algo mal en algun sitio.
-        if self.scanline_counter - 86 >= 160 || self.regs[LY] >= 144 {
-            return;
-        }
-
         let pixel = self.background_fifo.pop_front().unwrap();
 
-        let pos = (self.scanline_counter - 86 + self.regs[LY] as usize * 160) * 4;
-
-        let palette = [
-            self.colors[0b00000011 & self.regs[BGP] as usize],
-            self.colors[(0b00001100 & self.regs[BGP] as usize) >> 2],
-            self.colors[(0b00110000 & self.regs[BGP] as usize) >> 4],
-            self.colors[(0b11000000 & self.regs[BGP] as usize) >> 6],
-        ];
+        let pos = (self.lcd_x + self.regs[LY] as usize * 160) * 4;
 
         match pixel {
             TilePixelValue::Zero => {
-                self.lcd_pixels[pos] = palette[0].r;
-                self.lcd_pixels[pos + 1] = palette[0].g;
-                self.lcd_pixels[pos + 2] = palette[0].b;
+                self.lcd_pixels[pos] = self.palette[0].r;
+                self.lcd_pixels[pos + 1] = self.palette[0].g;
+                self.lcd_pixels[pos + 2] = self.palette[0].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             },
             TilePixelValue::One => {
-                self.lcd_pixels[pos] = palette[1].r;
-                self.lcd_pixels[pos + 1] = palette[1].g;
-                self.lcd_pixels[pos + 2] = palette[1].b;
+                self.lcd_pixels[pos] = self.palette[1].r;
+                self.lcd_pixels[pos + 1] = self.palette[1].g;
+                self.lcd_pixels[pos + 2] = self.palette[1].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
             TilePixelValue::Two => {
-                self.lcd_pixels[pos] = palette[2].r;
-                self.lcd_pixels[pos + 1] = palette[2].g;
-                self.lcd_pixels[pos + 2] = palette[2].b;
+                self.lcd_pixels[pos] = self.palette[2].r;
+                self.lcd_pixels[pos + 1] = self.palette[2].g;
+                self.lcd_pixels[pos + 2] = self.palette[2].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
             TilePixelValue::Three => {
-                self.lcd_pixels[pos] = palette[3].r;
-                self.lcd_pixels[pos + 1] = palette[3].g;
-                self.lcd_pixels[pos + 2] = palette[3].b;
+                self.lcd_pixels[pos] = self.palette[3].r;
+                self.lcd_pixels[pos + 1] = self.palette[3].g;
+                self.lcd_pixels[pos + 2] = self.palette[3].b;
                 self.lcd_pixels[pos + 3] = 0xFF;
             }
         }
+
+        self.lcd_x += 1;
     }
 }
 
