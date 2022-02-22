@@ -11,16 +11,6 @@ const E: usize = 5;
 const H: usize = 6;
 const L: usize = 7;
 
-// Interrupciones
-
-pub enum Interrupts {
-    VBlank,
-    LcdStat,
-    Timer,
-    Serial,
-    Joypad,
-}
-
 pub struct CPU {
     pub registers: [u8; 8],
     pub pc: u16,

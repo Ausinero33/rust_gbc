@@ -1,7 +1,5 @@
 mod hardware;
 
-use std::{hash::BuildHasher, io::Read};
-
 use hardware::{GameBoy, bus::Bus, Keys};
 use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
@@ -74,8 +72,6 @@ fn main() {
             }
     
             gameboy.cycle();
-
-            println!("{}", gameboy.cpu.bus.hram[0x100]);
 
             window.clear(Color::BLACK);
             

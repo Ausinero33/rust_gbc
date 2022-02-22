@@ -1,6 +1,6 @@
 use sfml::graphics::{Sprite, Texture, Transformable, RenderWindow, RenderTarget};
 
-use self::{cpu::CPU, bus::Bus, mbc::*};
+use self::{cpu::CPU, bus::{Bus, Interrupts}, mbc::*};
 
 pub mod cpu;
 mod ppu;
@@ -38,8 +38,8 @@ impl GameBoy {
         let mbc = rom[0x0147];
 
         match mbc {
-            0x00 => self.cpu.bus.rom = Some(Box::new(MBC0::new(&rom))),
-            0x01 => self.cpu.bus.rom = Some(Box::new(MBC1::new(&rom))),
+            0x00 => self.cpu.bus.set_rom(Some(Box::new(MBC0::new(&rom)))),
+            0x01 => self.cpu.bus.set_rom(Some(Box::new(MBC0::new(&rom)))),
             _ => panic!("MBC Erroneo o no implementado."),
         }
     }
@@ -84,44 +84,38 @@ impl GameBoy {
 
     pub fn set_input(&mut self, key: Keys, pressed: bool) {
         let prev_joyp = self.cpu.bus.read(0xFF00);
-        match key {
+        let val = match key {
             Keys::Down | Keys::Start => {
                 if pressed {
-                    let val = prev_joyp & 0b11110111;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp & 0b11110111
                 } else {
-                    let val = prev_joyp | 0b00001000;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp | 0b00001000
                 }
             },
             Keys::Up | Keys::Select => {
                 if pressed {
-                    let val = prev_joyp & 0b11111011;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp & 0b11111011
                 } else {
-                    let val = prev_joyp | 0b00000100;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp | 0b00000100
                 }
             },
             Keys::Left | Keys::B => {
                 if pressed {
-                    let val = prev_joyp & 0b11111101;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp & 0b11111101
                 } else {
-                    let val = prev_joyp | 0b00000010;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp | 0b00000010
                 }
             },
             Keys::Right | Keys::A => {
                 if pressed {
-                    let val = prev_joyp & 0b11111110;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp & 0b11111110
                 } else {
-                    let val = prev_joyp | 0b00000001;
-                    self.cpu.bus.set_joyp(val);
+                    prev_joyp | 0b00000001
                 }
             },
-        }
+        };
+        self.cpu.bus.set_joyp(val);
+        self.cpu.bus.set_int(Interrupts::Joypad);
     }
 
     pub fn debug_vram(&self) {

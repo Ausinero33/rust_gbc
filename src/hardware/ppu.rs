@@ -11,7 +11,7 @@ enum TilePixelValue {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum PpuMode {
+enum PpuMode {
     HBlank,
     VBlank,
     OamScaning,
@@ -32,21 +32,22 @@ const SCY: usize = 2;
 const SCX: usize = 3;
 const LY: usize = 4;
 const LYC: usize = 5;
-const DMA: usize = 6;
+// const DMA: usize = 6;
 const BGP: usize = 7;
-const OBP0: usize = 8;
-const OBP1: usize = 9;
-const WY: usize = 10;
-const WX: usize = 11;
+// const OBP0: usize = 8;
+// const OBP1: usize = 9;
+// const WY: usize = 10;
+// const WX: usize = 11;
 
 
 
 
 pub struct PPU {
     pub vram: [u8; 0x2000],
+    pub oam: [u8; 0xA0],
     pub regs: [u8; 12],
 
-    pub mode: PpuMode,
+    mode: PpuMode,
     cycles: u64,
 
     scanline_counter: usize,
@@ -75,6 +76,7 @@ impl PPU {
     pub fn new() -> Self {
         PPU {
             vram: [0x00; 0x2000],
+            oam: [0x00; 0xA0],
             regs: [0x00; 12],
 
             mode: PpuMode::OamScaning,
@@ -86,7 +88,6 @@ impl PPU {
             fetcher_x: 0,
             fetcher_state: FetcherState::GetTile,
             fetcher_tile: 0,
-            //fetcher_tile: [TilePixelValue::Zero; 8],
 
             data_low: 0,
             data_high: 0,
@@ -109,23 +110,31 @@ impl PPU {
         }
     }
 
-    pub fn read(&self, dir: usize) -> u8 {
-        self.read_vram(dir)
-    }
-
-    pub fn write(&mut self, dir: usize, val: u8) {
-        self.write_vram(dir, val);
-    }
-
-    fn read_vram(&self, dir: usize) -> u8 {
-        // TODO Mejorar esto
+    fn read_vram_ppu(&self, dir: usize) -> u8 {
         self.vram[dir - 0x8000]
     }
 
-    fn write_vram(&mut self, dir: usize, val: u8) {
-        // TODO Mejorar esto
-        let index = dir - 0x8000;
-        self.vram[index] = val;
+    pub fn read_vram(&self, dir: usize) -> u8 {
+        if self.mode != PpuMode::Drawing {
+            self.vram[dir - 0x8000]
+        } else {
+            0xFF
+        }
+    }
+
+    pub fn write_vram(&mut self, dir: usize, val: u8) {
+        if self.mode != PpuMode::Drawing {
+            let index = dir - 0x8000;
+            self.vram[index] = val;
+        }
+    }
+
+    pub fn read_oam(&self, dir: usize) -> u8{
+        self.oam[dir - 0xFE00]
+    }
+
+    pub fn write_oam(&mut self, dir: usize, val: u8) {
+        self.oam[dir - 0xFE00] = val;
     }
 
     pub fn get_image(&self) -> Image {
@@ -249,7 +258,7 @@ impl PPU {
                     32 * (((self.regs[LY] as usize + self.regs[SCY] as usize) & 255) / 8)
                 };
 
-                self.fetcher_tile = self.read(x + y + self.fetcher_tilemap) as usize;
+                self.fetcher_tile = self.read_vram_ppu(x + y + self.fetcher_tilemap) as usize;
                 
                 
                 self.fetcher_state = FetcherState::GetDataLow;
@@ -258,13 +267,12 @@ impl PPU {
                 let dir = if self.regs[LCDC] & 0b00010000 != 0 {
                     0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1
                 } else {
-                    // TODO ARREGLAR ESTO
                     let signed_tile = self.fetcher_tile as i8 as i32;
                     let x_offset = 0x9000 + signed_tile * 0x10 as i32;
                     x_offset as usize + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1
                 };
 
-                self.data_low = self.read(dir);
+                self.data_low = self.read_vram_ppu(dir);
 
                 self.fetcher_state = FetcherState::GetDataHigh;
             },
@@ -277,7 +285,7 @@ impl PPU {
                     x_offset as usize + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
                 };
 
-                self.data_high = self.read(dir);
+                self.data_high = self.read_vram_ppu(dir);
 
                 if self.fetcher_tile == 0x18 {
                     let _a = 1;

@@ -1,13 +1,22 @@
-use super::{mbc::MbcController, ppu::PPU, ppu::PpuMode, cpu::Interrupts};
+use super::{mbc::MbcController, ppu::PPU};
+
+// Interrupciones
+pub enum Interrupts {
+    VBlank,
+    LcdStat,
+    Timer,
+    // Serial,
+    Joypad,
+}
 
 pub struct Bus {
-    pub rom: Option<Box<dyn MbcController>>,    // 0x0000 - 0x7FFF
+    rom: Option<Box<dyn MbcController>>,    // 0x0000 - 0x7FFF
     pub ppu: PPU,                               // 0x8000 - 0x9FFF
     eram: [u8; 0x2000],                         // 0xA000 - 0xBFFF
     wram: [u8; 0x2000],                         // 0xC000 - 0xDFFF (0xE000 - 0xFDFF)
-    pub hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF
+    hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF
     boot_rom: [u8; 0x100],
-    pub enable_boot_rom: bool,
+    enable_boot_rom: bool,
 
     internat_div_counter: u16,
     last_and_result: bool,
@@ -46,22 +55,20 @@ impl Bus {
         }
     }
 
+    pub fn set_rom(&mut self, rom: Option<Box<dyn MbcController>>) {
+        self.rom = rom;
+    }
+
     pub fn read(&self, dir: usize) -> u8 {
         match dir {
             0x0000 ..= 0x7FFF => {
                 if self.read(0xFF50) == 0 && dir < 0x100 && self.enable_boot_rom {
-                    //println!("{:02X}", self.boot_rom[dir]);
                     self.boot_rom[dir]
                 } else {
                     self.rom.as_ref().unwrap().read(dir)
                 }
-                //self.rom.as_ref().unwrap().read(dir)
             },
-            0x8000 ..= 0x9FFF => if self.ppu.mode != PpuMode::Drawing {
-                    self.ppu.read(dir)
-                } else {
-                    0xFF
-                },
+            0x8000 ..= 0x9FFF => self.ppu.read_vram(dir),
             0xA000 ..= 0xBFFF => self.eram[dir - 0xA000],
             0xC000 ..= 0xDFFF => self.wram[dir - 0xC000],
             0xE000 ..= 0xFDFF => {
@@ -70,7 +77,7 @@ impl Bus {
                 };
                 self.wram[dir - 0xE000]
             },
-            0xFE00 ..= 0xFE9F => /* TODO OAM Read */ self.hram[dir - 0xFE00],
+            0xFE00 ..= 0xFE9F => self.ppu.read_oam(dir),
             0xFEA0 ..= 0xFEFF => 0x00,
             0xFF00 ..= 0xFF7F => {
                 match dir {
@@ -86,13 +93,11 @@ impl Bus {
     pub fn write(&mut self, dir: usize, val: u8) {
         match dir {
             0x0000 ..= 0x7FFF => self.rom.as_mut().unwrap().write(dir, val),
-            0x8000 ..= 0x9FFF => if self.ppu.mode != PpuMode::Drawing {
-                self.ppu.write(dir, val);
-            },
+            0x8000 ..= 0x9FFF => self.ppu.write_vram(dir, val),
             0xA000 ..= 0xBFFF => self.eram[dir - 0xA000] = val,
             0xC000 ..= 0xDFFF => self.wram[dir - 0xC000] = val,
             0xE000 ..= 0xFDFF => self.wram[dir - 0xE000] = val,
-            0xFE00 ..= 0xFE9F => /* TODO OAM Write */ self.hram[dir - 0xFE00] = val,
+            0xFE00 ..= 0xFE9F => self.ppu.write_oam(dir, val),
             0xFEA0 ..= 0xFEFF => {},
             0xFF00 ..= 0xFF7F => {
                 match dir {
@@ -190,7 +195,7 @@ impl Bus {
             Interrupts::VBlank => int_f |= 0b00000001,
             Interrupts::LcdStat => int_f |= 0b00000010,
             Interrupts::Timer => int_f |= 0b00000100,
-            Interrupts::Serial => int_f |= 0b00001000,
+            //Interrupts::Serial => int_f |= 0b00001000,
             Interrupts::Joypad => int_f |= 0b00010000,
         }
 
