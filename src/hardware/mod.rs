@@ -82,43 +82,43 @@ impl GameBoy {
         window.draw(&sprite);
     }
 
-    pub fn set_input(&mut self, key: Keys, cond: bool) {
-        let prev_p1 = self.cpu.bus.read(0xFF00);
+    pub fn set_input(&mut self, key: Keys, pressed: bool) {
+        let prev_joyp = self.cpu.bus.read(0xFF00);
         match key {
             Keys::Down | Keys::Start => {
-                if cond {
-                    let val = prev_p1 & 0b11110111;
-                    self.cpu.bus.write(0xFF00, val);
+                if pressed {
+                    let val = prev_joyp & 0b11110111;
+                    self.cpu.bus.set_joyp(val);
                 } else {
-                    let val = prev_p1 | 0b00001000;
-                    self.cpu.bus.write(0xFF00, val);
+                    let val = prev_joyp | 0b00001000;
+                    self.cpu.bus.set_joyp(val);
                 }
             },
             Keys::Up | Keys::Select => {
-                if cond {
-                    let val = prev_p1 & 0b11111011;
-                    self.cpu.bus.write(0xFF00, val);
+                if pressed {
+                    let val = prev_joyp & 0b11111011;
+                    self.cpu.bus.set_joyp(val);
                 } else {
-                    let val = prev_p1 | 0b00000100;
-                    self.cpu.bus.write(0xFF00, val);
+                    let val = prev_joyp | 0b00000100;
+                    self.cpu.bus.set_joyp(val);
                 }
             },
             Keys::Left | Keys::B => {
-                if cond {
-                    let val = prev_p1 & 0b11111101;
-                    self.cpu.bus.write(0xFF00, val);
+                if pressed {
+                    let val = prev_joyp & 0b11111101;
+                    self.cpu.bus.set_joyp(val);
                 } else {
-                    let val = prev_p1 | 0b00000010;
-                    self.cpu.bus.write(0xFF00, val);
+                    let val = prev_joyp | 0b00000010;
+                    self.cpu.bus.set_joyp(val);
                 }
             },
             Keys::Right | Keys::A => {
-                if cond {
-                    let val = prev_p1 & 0b11111110;
-                    self.cpu.bus.write(0xFF00, val);
+                if pressed {
+                    let val = prev_joyp & 0b11111110;
+                    self.cpu.bus.set_joyp(val);
                 } else {
-                    let val = prev_p1 | 0b00000001;
-                    self.cpu.bus.write(0xFF00, val);
+                    let val = prev_joyp | 0b00000001;
+                    self.cpu.bus.set_joyp(val);
                 }
             },
         }

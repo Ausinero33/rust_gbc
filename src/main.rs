@@ -49,7 +49,7 @@ fn main() {
                     Event::KeyPressed {code: Key::P, ..} => gameboy.debug_background(),
                     Event::KeyPressed {code: Key::O, ..} => gameboy.debug_vram(),
                     Event::KeyPressed {code: Key::I, ..} => gameboy.debug_frame(),
-                    
+
                     // Inputs de la consola
                     Event::KeyPressed {code: Key::DOWN, ..} => gameboy.set_input(Keys::Down, true),
                     Event::KeyPressed {code: Key::UP, ..} => gameboy.set_input(Keys::Up, true),
@@ -74,6 +74,9 @@ fn main() {
             }
     
             gameboy.cycle();
+
+            println!("{}", gameboy.cpu.bus.hram[0x100]);
+
             window.clear(Color::BLACK);
             
             gameboy.draw(&mut window);

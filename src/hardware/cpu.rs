@@ -117,7 +117,7 @@ impl CPU {
             self.pc = 0x100;
             self.bus.reset();
         }
-        //self.bus.write(0xFF00, 0x01);
+        self.bus.reset_joyp();
     }
 
     pub fn cycle(&mut self) -> u64{

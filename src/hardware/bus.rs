@@ -5,7 +5,7 @@ pub struct Bus {
     pub ppu: PPU,                               // 0x8000 - 0x9FFF
     eram: [u8; 0x2000],                         // 0xA000 - 0xBFFF
     wram: [u8; 0x2000],                         // 0xC000 - 0xDFFF (0xE000 - 0xFDFF)
-    hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF
+    pub hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF
     boot_rom: [u8; 0x100],
     pub enable_boot_rom: bool,
 
@@ -74,7 +74,6 @@ impl Bus {
             0xFEA0 ..= 0xFEFF => 0x00,
             0xFF00 ..= 0xFF7F => {
                 match dir {
-                    //0xFF00 => 0x01,
                     0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40],
                     _ => self.hram[dir - 0xFE00],
                 }
@@ -87,9 +86,6 @@ impl Bus {
     pub fn write(&mut self, dir: usize, val: u8) {
         match dir {
             0x0000 ..= 0x7FFF => self.rom.as_mut().unwrap().write(dir, val),
-            // 0x8000 ..= 0x9FFF => if self.ppu.mode != PpuMode::Drawing {
-            //         self.ppu.write(dir, val)
-            //     },
             0x8000 ..= 0x9FFF => if self.ppu.mode != PpuMode::Drawing {
                 self.ppu.write(dir, val);
             },
@@ -99,13 +95,10 @@ impl Bus {
             0xFE00 ..= 0xFE9F => /* TODO OAM Write */ self.hram[dir - 0xFE00] = val,
             0xFEA0 ..= 0xFEFF => {},
             0xFF00 ..= 0xFF7F => {
-                if dir == 0xFF00 {
-                    let _a = 1;
-                }
                 match dir {
                     0xFF00 => {
-                        let joyp = self.hram[dir - 0xFE00] & 0x0F;
-                        self.hram[dir - 0xFE00] = joyp | (val & 0xF0);
+                        let joyp = self.hram[0x100] & 0x0F;
+                        self.hram[0x100] = joyp | (val & 0xF0);
                     }
                     0xFF04 => self.hram[dir - 0xFE00] = 0,
                     0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40] = val,
@@ -118,7 +111,7 @@ impl Bus {
     }
 
     pub fn set_joyp(&mut self, val: u8) {
-        self.hram[0x100] |= val;
+        self.hram[0x100] = val;
     }
 
     pub fn set_enable_boot_rom(mut self, enable_boot_rom: bool) -> Bus {
@@ -158,6 +151,10 @@ impl Bus {
         self.write(0xFF4A, 0x00);
         self.write(0xFF4B, 0x00);
         self.write(0xFFFF, 0x00);
+    }
+
+    pub fn reset_joyp(&mut self) {
+        self.hram[0x100] = 0xFF;
     }
 
     pub fn increase_div(&mut self) {
