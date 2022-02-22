@@ -39,9 +39,6 @@ const BGP: usize = 7;
 // const WY: usize = 10;
 // const WX: usize = 11;
 
-
-
-
 pub struct PPU {
     pub vram: [u8; 0x2000],
     pub oam: [u8; 0xA0],
@@ -187,7 +184,7 @@ impl PPU {
                 },
                 PpuMode::Drawing => {
                     self.fetcher_cycle(&cycles_to_tick);
-                    self.fifo_cycle();
+                    self.pixel_mixer_cycle();
 
                     self.regs[STAT] = self.regs[STAT] & 0b11111100 + 0b11;
 
@@ -318,16 +315,18 @@ impl PPU {
         }
     }
 
-    fn fifo_cycle(&mut self) {
+    fn pixel_mixer_cycle(&mut self) {
         if self.background_fifo.is_empty() {
             return;
         }
 
-        let pixel = self.background_fifo.pop_front().unwrap();
+        let bg_pixel = self.background_fifo.pop_front().unwrap();
 
         let pos = (self.lcd_x + self.regs[LY] as usize * 160) * 4;
 
-        match pixel {
+        // TODO Sprite FIFO
+
+        match bg_pixel {
             TilePixelValue::Zero => {
                 self.lcd_pixels[pos] = self.palette[0].r;
                 self.lcd_pixels[pos + 1] = self.palette[0].g;

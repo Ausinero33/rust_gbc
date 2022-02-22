@@ -24,9 +24,9 @@ fn main() {
         // "roms/individual/09-op r,r.gb",
         // "roms/individual/10-bit ops.gb",
         // "roms/individual/11-op a,(hl).gb",
-        //"roms/Dr. Mario (World).gb",
+        "roms/Dr. Mario (World).gb",
         //"roms/cpu_instrs.gb",
-        "roms/Tetris (World) (Rev A).gb",
+        //"roms/Tetris (World) (Rev A).gb",
         //"roms/Pokemon Red (UE) [S][!].gb",
         //"roms/Super Mario Land (World).gb",
         //"roms/mem_timing.gb"
