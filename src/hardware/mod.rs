@@ -8,6 +8,17 @@ mod inst_set;
 mod mbc;
 pub mod bus;
 
+pub enum Keys {
+    Down,
+    Up,
+    Left,
+    Right,
+    Start,
+    Select,
+    B,
+    A,
+}
+
 pub struct GameBoy {
     pub cpu: CPU,
     enable_boot_rom: bool,
@@ -29,7 +40,6 @@ impl GameBoy {
         match mbc {
             0x00 => self.cpu.bus.rom = Some(Box::new(MBC0::new(&rom))),
             0x01 => self.cpu.bus.rom = Some(Box::new(MBC1::new(&rom))),
-            // 0x01 => self.mbc1(),
             _ => panic!("MBC Erroneo o no implementado."),
         }
     }
@@ -70,6 +80,48 @@ impl GameBoy {
         let mut sprite = Sprite::with_texture(&texture);
         sprite.set_scale((2.0, 2.0));
         window.draw(&sprite);
+    }
+
+    pub fn set_input(&mut self, key: Keys, cond: bool) {
+        let prev_p1 = self.cpu.bus.read(0xFF00);
+        match key {
+            Keys::Down | Keys::Start => {
+                if cond {
+                    let val = prev_p1 & 0b11110111;
+                    self.cpu.bus.write(0xFF00, val);
+                } else {
+                    let val = prev_p1 | 0b00001000;
+                    self.cpu.bus.write(0xFF00, val);
+                }
+            },
+            Keys::Up | Keys::Select => {
+                if cond {
+                    let val = prev_p1 & 0b11111011;
+                    self.cpu.bus.write(0xFF00, val);
+                } else {
+                    let val = prev_p1 | 0b00000100;
+                    self.cpu.bus.write(0xFF00, val);
+                }
+            },
+            Keys::Left | Keys::B => {
+                if cond {
+                    let val = prev_p1 & 0b11111101;
+                    self.cpu.bus.write(0xFF00, val);
+                } else {
+                    let val = prev_p1 | 0b00000010;
+                    self.cpu.bus.write(0xFF00, val);
+                }
+            },
+            Keys::Right | Keys::A => {
+                if cond {
+                    let val = prev_p1 & 0b11111110;
+                    self.cpu.bus.write(0xFF00, val);
+                } else {
+                    let val = prev_p1 | 0b00000001;
+                    self.cpu.bus.write(0xFF00, val);
+                }
+            },
+        }
     }
 
     pub fn debug_vram(&self) {

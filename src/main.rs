@@ -1,6 +1,8 @@
 mod hardware;
 
-use hardware::{GameBoy, bus::Bus};
+use std::{hash::BuildHasher, io::Read};
+
+use hardware::{GameBoy, bus::Bus, Keys};
 use sfml::{graphics::{RenderWindow, RenderTarget, Color}, window::{Style, Event, Key}};
 
 fn main() {
@@ -26,29 +28,47 @@ fn main() {
         // "roms/individual/11-op a,(hl).gb",
         //"roms/Dr. Mario (World).gb",
         //"roms/cpu_instrs.gb",
-        //"roms/Tetris (World) (Rev A).gb",
+        "roms/Tetris (World) (Rev A).gb",
         //"roms/Pokemon Red (UE) [S][!].gb",
-        "roms/Super Mario Land (World).gb",
+        //"roms/Super Mario Land (World).gb",
         //"roms/mem_timing.gb"
         //"roms/instr_timing.gb"
     ];
 
     for i in roms {
-        let mut gameboy = GameBoy::new(Bus::new(), false);
+        let mut gameboy = GameBoy::new(Bus::new(), true);
         gameboy.reset();
         gameboy.load_rom(i);
     
         'inner: loop {
-            // Controlar si se sale
-            //println!("{:04X}", gameboy.cpu.pc);
             while let Some(event) = window.poll_event() {
                 match event {
                     Event::Closed | Event::KeyPressed {
                         code: Key::ESCAPE, ..
                     } => break 'inner,
-                    Event::KeyPressed {code: Key::A, ..} => gameboy.debug_background(),
-                    Event::KeyPressed {code: Key::S, ..} => gameboy.debug_vram(),
-                    Event::KeyPressed {code: Key::D, ..} => gameboy.debug_frame(),
+                    Event::KeyPressed {code: Key::P, ..} => gameboy.debug_background(),
+                    Event::KeyPressed {code: Key::O, ..} => gameboy.debug_vram(),
+                    Event::KeyPressed {code: Key::I, ..} => gameboy.debug_frame(),
+                    
+                    // Inputs de la consola
+                    Event::KeyPressed {code: Key::DOWN, ..} => gameboy.set_input(Keys::Down, true),
+                    Event::KeyPressed {code: Key::UP, ..} => gameboy.set_input(Keys::Up, true),
+                    Event::KeyPressed {code: Key::LEFT, ..} => gameboy.set_input(Keys::Left, true),
+                    Event::KeyPressed {code: Key::RIGHT, ..} => gameboy.set_input(Keys::Right, true),
+                    Event::KeyPressed {code: Key::Z, ..} => gameboy.set_input(Keys::Select, true),
+                    Event::KeyPressed {code: Key::X, ..} => gameboy.set_input(Keys::Start, true),
+                    Event::KeyPressed {code: Key::S, ..} => gameboy.set_input(Keys::B, true),
+                    Event::KeyPressed {code: Key::A, ..} => gameboy.set_input(Keys::A, true),
+
+                    Event::KeyReleased {code: Key::DOWN, ..} => gameboy.set_input(Keys::Down, false),
+                    Event::KeyReleased {code: Key::UP, ..} => gameboy.set_input(Keys::Up, false),
+                    Event::KeyReleased {code: Key::LEFT, ..} => gameboy.set_input(Keys::Left, false),
+                    Event::KeyReleased {code: Key::RIGHT, ..} => gameboy.set_input(Keys::Right, false),
+                    Event::KeyReleased {code: Key::Z, ..} => gameboy.set_input(Keys::Select, false),
+                    Event::KeyReleased {code: Key::X, ..} => gameboy.set_input(Keys::Start, false),
+                    Event::KeyReleased {code: Key::S, ..} => gameboy.set_input(Keys::B, false),
+                    Event::KeyReleased {code: Key::A, ..} => gameboy.set_input(Keys::A, false),
+                
                     _ => {}
                 }
             }
@@ -58,6 +78,8 @@ fn main() {
             
             gameboy.draw(&mut window);
             
+            //println!("{}", gameboy.cpu.bus.read(0xFF00));
+
             window.display()
         }
     }

@@ -74,20 +74,12 @@ impl Bus {
             0xFEA0 ..= 0xFEFF => 0x00,
             0xFF00 ..= 0xFF7F => {
                 match dir {
-                    0xFF00 => 0x01,
-                    0xFF04 => self.hram[dir - 0xFE00],
+                    //0xFF00 => 0x01,
                     0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40],
                     _ => self.hram[dir - 0xFE00],
                 }
             }
             0xFF80 ..= 0xFFFF => self.hram[dir - 0xFE00],
-            // 0xFE00 ..= 0xFFFF => {
-            //     if dir >= 0xFF40 && dir <= 0xFF4B {
-            //         self.ppu.regs[dir - 0xFF40]
-            //     } else {
-            //         self.hram[dir - 0xFE00]
-            //     }
-            // },
             _ => unreachable!()
         }
     }
@@ -107,7 +99,14 @@ impl Bus {
             0xFE00 ..= 0xFE9F => /* TODO OAM Write */ self.hram[dir - 0xFE00] = val,
             0xFEA0 ..= 0xFEFF => {},
             0xFF00 ..= 0xFF7F => {
+                if dir == 0xFF00 {
+                    let _a = 1;
+                }
                 match dir {
+                    0xFF00 => {
+                        let joyp = self.hram[dir - 0xFE00] & 0x0F;
+                        self.hram[dir - 0xFE00] = joyp | (val & 0xF0);
+                    }
                     0xFF04 => self.hram[dir - 0xFE00] = 0,
                     0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40] = val,
                     _ => self.hram[dir - 0xFE00] = val,
@@ -116,10 +115,10 @@ impl Bus {
             0xFF80 ..= 0xFFFF => self.hram[dir - 0xFE00] = val,
             _ => unreachable!()
         }
+    }
 
-        if dir == 0xFF40 {
-            let _a = 1;
-        }
+    pub fn set_joyp(&mut self, val: u8) {
+        self.hram[0x100] |= val;
     }
 
     pub fn set_enable_boot_rom(mut self, enable_boot_rom: bool) -> Bus {
