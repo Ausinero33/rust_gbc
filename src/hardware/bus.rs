@@ -80,7 +80,7 @@ impl Bus {
             0xFEA0 ..= 0xFEFF => 0x00,
             0xFF00 ..= 0xFF7F => {
                 match dir {
-                    0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40],
+                    0xFF40 ..= 0xFF4B => self.ppu.read_reg(dir),
                     _ => self.io_regs[dir - 0xFF00],
                 }
             }
@@ -106,7 +106,7 @@ impl Bus {
                         self.io_regs[0] = joyp | (val & 0xF0);
                     }
                     0xFF04 => self.io_regs[dir - 0xFF00] = 0,
-                    0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40] = val,
+                    0xFF40 ..= 0xFF4B => self.ppu.write_reg(dir, val),
                     _ => self.io_regs[dir - 0xFF00] = val,
                 }
             }

@@ -13,6 +13,7 @@ pub struct MBC1 {
     rom_bank_number: u8,
     ram_enable: bool,
     banking_mode: u8,
+    code: u8,
 }
 
 impl MbcController for MBC0 {
@@ -37,6 +38,7 @@ impl MbcController for MBC1 {
             rom_bank_number: 1,
             ram_enable: false,
             banking_mode: 0,
+            code: code,
         }
     }
 

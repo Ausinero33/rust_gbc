@@ -36,8 +36,8 @@ const LYC: usize = 5;
 const BGP: usize = 7;
 // const OBP0: usize = 8;
 // const OBP1: usize = 9;
-// const WY: usize = 10;
-// const WX: usize = 11;
+const WY: usize = 10;
+const WX: usize = 11;
 
 pub struct PPU {
     pub vram: [u8; 0x2000],
@@ -48,23 +48,25 @@ pub struct PPU {
     cycles: u64,
 
     scanline_counter: usize,
+    scanline: usize,
+    last_scanline: i32,
 
+    is_window: bool,
+    window_line_counter: usize,
     fetcher_tilemap: usize,
     fetcher_x: usize,
     fetcher_state: FetcherState,
     fetcher_tile: usize,
-    //fetcher_tile: [TilePixelValue; 8],
 
     data_low: u8,
     data_high: u8,
-
-    //pub regs: PpuRegisters,
 
     background_fifo: VecDeque<TilePixelValue>,
     lcd_x: usize,
     pub lcd_pixels: [u8; 144 * 160 * 4],
     colors: [Color; 4],
     palette: [Color; 4],
+    x_scrolled: u8,
 }
 
 
@@ -80,7 +82,11 @@ impl PPU {
             cycles: 0,
 
             scanline_counter: 0,
+            scanline: 0,
+            last_scanline: -1,
 
+            is_window: false,
+            window_line_counter: 0,
             fetcher_tilemap: 0x9800,
             fetcher_x: 0,
             fetcher_state: FetcherState::GetTile,
@@ -103,12 +109,24 @@ impl PPU {
                 Color{r: 0x88, g: 0xC0, b: 0x70},
                 Color{r: 0x34, g: 0x68, b: 0x56},
                 Color{r: 0x08, g: 0x18, b: 0x20},
-            ]
+            ],
+            x_scrolled: 0,
         }
     }
 
     fn read_vram_ppu(&self, dir: usize) -> u8 {
         self.vram[dir - 0x8000]
+    }
+
+    pub fn read_reg(&self, reg: usize) -> u8 {
+        self.regs[reg - 0xFF40]
+    }
+
+    pub fn write_reg(&mut self, reg: usize, val: u8) {
+        if reg == 0xFF43 && val != 0 {
+            println!("{}", val);
+        }
+        self.regs[reg - 0xFF40] = val;
     }
 
     pub fn read_vram(&self, dir: usize) -> u8 {
@@ -168,6 +186,9 @@ impl PPU {
                             self.mode = PpuMode::VBlank;
                             int.0 = true;
                             self.regs[STAT] |= 0b00010000;
+                            self.is_window = false;
+                            self.last_scanline = -1;
+                            self.window_line_counter = 0;
                         } else {
                             self.mode = PpuMode::OamScaning;
                             self.regs[STAT] |= 0b00100000;
@@ -183,6 +204,7 @@ impl PPU {
                     }
                 },
                 PpuMode::Drawing => {
+                    self.test_window();
                     self.fetcher_cycle(&cycles_to_tick);
                     self.pixel_mixer_cycle();
 
@@ -221,6 +243,12 @@ impl PPU {
             self.cycles += 1;
             self.regs[LY] = ((self.cycles / 456) % 154) as u8;
             self.scanline_counter = (self.cycles % 456) as usize;
+
+            if (self.cycles % 456) == 0 {
+                self.scanline += 1;
+            }
+
+
             cycles_to_tick -= 1;
         }
 
@@ -236,21 +264,21 @@ impl PPU {
 
         match self.fetcher_state {
             FetcherState::GetTile => {
-                if self.regs[LCDC] & 0b00001000 != 0 && false /*TODO Saber si no está en pantalla, false temporal para que no entre */ {
+                if self.regs[LCDC] & 0b00001000 != 0 && !self.is_window {
                     self.fetcher_tilemap = 0x9C00;
                 }
-                if self.regs[LCDC] & 0b01000000 != 0 && false /*TODO Saber si está en pantalla, false temporal para que no entre */ {
+                if self.regs[LCDC] & 0b01000000 != 0 && self.is_window {
                     self.fetcher_tilemap = 0x9C00;
                 }
 
-                let x = if false /*TODO WINDOW */ {
-                    0
+                let x = if self.is_window {
+                    self.fetcher_x
                 } else {
                     ((self.regs[SCX] as usize / 8) + self.fetcher_x) & 0x1F
                 };
 
-                let y = if false /*TODO WINDOW */ {
-                    0
+                let y = if self.is_window {
+                    32 * (self.window_line_counter / 8)
                 } else {
                     32 * (((self.regs[LY] as usize + self.regs[SCY] as usize) & 255) / 8)
                 };
@@ -261,8 +289,14 @@ impl PPU {
                 self.fetcher_state = FetcherState::GetDataLow;
             },
             FetcherState::GetDataLow => {
+                let offset = if !self.is_window {
+                    2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
+                } else {
+                    2 * (self.window_line_counter % 8)
+                };
+
                 let dir = if self.regs[LCDC] & 0b00010000 != 0 {
-                    0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8) + 1
+                    0x8000 + (self.fetcher_tile * 0x10) + offset + 1
                 } else {
                     let signed_tile = self.fetcher_tile as i8 as i32;
                     let x_offset = 0x9000 + signed_tile * 0x10 as i32;
@@ -274,8 +308,14 @@ impl PPU {
                 self.fetcher_state = FetcherState::GetDataHigh;
             },
             FetcherState::GetDataHigh => {
+                let offset = if !self.is_window {
+                    2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
+                } else {
+                    2 * (self.window_line_counter % 8)
+                };
+
                 let dir = if self.regs[LCDC] & 0b00010000 != 0 {
-                    0x8000 + (self.fetcher_tile * 0x10) + 2 * ((self.regs[LY] as usize + self.regs[SCY] as usize) % 8)
+                    0x8000 + (self.fetcher_tile * 0x10) + offset
                 } else {
                     let signed_tile = self.fetcher_tile as i8 as i32;
                     let x_offset = 0x9000 + signed_tile * 0x10 as i32;
@@ -326,6 +366,11 @@ impl PPU {
 
         // TODO Sprite FIFO
 
+
+        if self.x_scrolled < (self.regs[SCX] % 8) {
+            return;
+        }
+
         match bg_pixel {
             TilePixelValue::Zero => {
                 self.lcd_pixels[pos] = self.palette[0].r;
@@ -354,6 +399,23 @@ impl PPU {
         }
 
         self.lcd_x += 1;
+    }
+
+    fn test_window(&mut self) {
+        if self.regs[LCDC] & 0b00100000 != 0 && self.regs[WY] == self.regs[LY] && self.lcd_x >= (self.regs[WX] - 7) as usize {
+            if !self.is_window {
+                self.fetcher_state = FetcherState::GetTile;
+                self.fetcher_x = 0;
+                self.background_fifo.clear();
+            }
+
+            if self.scanline as i32 != self.last_scanline {
+                self.window_line_counter += 1;
+                self.last_scanline += 1;
+            }
+
+            self.is_window = true;
+        }
     }
 }
 

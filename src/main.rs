@@ -28,16 +28,17 @@ fn main() {
         //"roms/cpu_instrs.gb",
         //"roms/Tetris (World) (Rev A).gb",
         //"roms/Pokemon Red (UE) [S][!].gb",
-        //"roms/Super Mario Land (World).gb",
+        "roms/Super Mario Land (World).gb",
         //"roms/mem_timing.gb",
-        "roms/instr_timing.gb",
+        //"roms/instr_timing.gb",
         // "roms/rom_singles/01-read_timing.gb",
         // "roms/rom_singles/03-modify_timing.gb",
         // "roms/rom_singles/02-write_timing.gb",
+        //"roms/Tennis (World).gb"
     ];
 
     for i in roms {
-        let mut gameboy = GameBoy::new(Bus::new(), false);
+        let mut gameboy = GameBoy::new(Bus::new(), true);
         gameboy.reset();
         gameboy.load_rom(i);
     
