@@ -1,5 +1,5 @@
 pub trait MbcController {
-    fn new<>(rom: &[u8]) -> Self where Self: Sized;
+    fn new<>(rom: &[u8], code: u8) -> Self where Self: Sized;
     fn read(&self, dir: usize) -> u8;
     fn write(&mut self, dir: usize, val: u8);
 }
@@ -16,7 +16,7 @@ pub struct MBC1 {
 }
 
 impl MbcController for MBC0 {
-    fn new<>(rom: &[u8]) -> Self {
+    fn new<>(rom: &[u8], _code: u8) -> Self {
         MBC0 {
             rom: rom.to_vec()
         }
@@ -31,7 +31,7 @@ impl MbcController for MBC0 {
 }
 
 impl MbcController for MBC1 {
-    fn new<>(rom: &[u8]) -> Self {
+    fn new<>(rom: &[u8], code: u8) -> Self {
         MBC1 {
             rom: rom.to_vec(),
             rom_bank_number: 1,
@@ -57,6 +57,7 @@ impl MbcController for MBC1 {
         if dir < 0x2000 {
             if val == 0x0A { self.ram_enable = true } else { self.ram_enable = false };
         } else if dir < 0x4000 {
+            
             // TODO Añadir caso de que el cartucho sea grande
             self.rom_bank_number = val & 0b00011111;
 
@@ -66,9 +67,9 @@ impl MbcController for MBC1 {
                 self.rom_bank_number = 1;
             }
         } else if dir < 0x6000 {
-            
+            // TODO RAM BANKING O UPPER ROM
         } else {
-            self.banking_mode = val;
+            self.banking_mode = val & 1;
         }
     }
 }

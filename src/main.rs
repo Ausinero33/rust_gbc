@@ -13,8 +13,8 @@ fn main() {
     window.set_framerate_limit(60);
 
     let roms = [
-        //"roms/individual/01-special.gb",
-        //"roms/individual/02-interrupts.gb",
+        // "roms/individual/01-special.gb",
+        // "roms/individual/02-interrupts.gb",
         // "roms/individual/03-op sp,hl.gb",
         // "roms/individual/04-op r,imm.gb",
         // "roms/individual/05-op rp.gb",
@@ -24,17 +24,20 @@ fn main() {
         // "roms/individual/09-op r,r.gb",
         // "roms/individual/10-bit ops.gb",
         // "roms/individual/11-op a,(hl).gb",
-        "roms/Dr. Mario (World).gb",
+        //"roms/Dr. Mario (World).gb",
         //"roms/cpu_instrs.gb",
         //"roms/Tetris (World) (Rev A).gb",
         //"roms/Pokemon Red (UE) [S][!].gb",
         //"roms/Super Mario Land (World).gb",
-        //"roms/mem_timing.gb"
-        //"roms/instr_timing.gb"
+        //"roms/mem_timing.gb",
+        "roms/instr_timing.gb",
+        // "roms/rom_singles/01-read_timing.gb",
+        // "roms/rom_singles/03-modify_timing.gb",
+        // "roms/rom_singles/02-write_timing.gb",
     ];
 
     for i in roms {
-        let mut gameboy = GameBoy::new(Bus::new(), true);
+        let mut gameboy = GameBoy::new(Bus::new(), false);
         gameboy.reset();
         gameboy.load_rom(i);
     

@@ -38,8 +38,10 @@ impl GameBoy {
         let mbc = rom[0x0147];
 
         match mbc {
-            0x00 => self.cpu.bus.set_rom(Some(Box::new(MBC0::new(&rom)))),
-            0x01 => self.cpu.bus.set_rom(Some(Box::new(MBC0::new(&rom)))),
+            0x00 => self.cpu.bus.set_rom(Some(Box::new(MBC0::new(&rom, 0)))),
+            0x01 => self.cpu.bus.set_rom(Some(Box::new(MBC1::new(&rom, 1)))),
+            0x02 => self.cpu.bus.set_rom(Some(Box::new(MBC1::new(&rom, 2)))),
+            0x03 => self.cpu.bus.set_rom(Some(Box::new(MBC1::new(&rom, 3)))),
             _ => panic!("MBC Erroneo o no implementado."),
         }
     }
