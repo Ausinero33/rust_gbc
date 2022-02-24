@@ -5,16 +5,18 @@ pub enum Interrupts {
     VBlank,
     LcdStat,
     Timer,
-    // Serial,
+    Serial,
     Joypad,
 }
 
 pub struct Bus {
-    rom: Option<Box<dyn MbcController>>,    // 0x0000 - 0x7FFF
+    rom: Option<Box<dyn MbcController>>,        // 0x0000 - 0x7FFF
     pub ppu: PPU,                               // 0x8000 - 0x9FFF
     eram: [u8; 0x2000],                         // 0xA000 - 0xBFFF
     wram: [u8; 0x2000],                         // 0xC000 - 0xDFFF (0xE000 - 0xFDFF)
-    hram: [u8; 0x200],                          // 0xFE00 - 0xFFFF
+    io_regs: [u8; 0x80],                        // 0xFF00 - 0xFF7F
+    hram: [u8; 0x80],                           // 0xFF80 - 0xFFFE
+    i_enable: u8,                               // 0xFFFF
     boot_rom: [u8; 0x100],
     enable_boot_rom: bool,
 
@@ -29,7 +31,9 @@ impl Bus {
             ppu: PPU::new(),
             eram: [0x00; 0x2000],
             wram: [0x00; 0x2000],
-            hram: [0x00; 0x200],
+            io_regs: [0x00; 0x80],
+            hram: [0x00; 0x80],
+            i_enable: 0x00,
             boot_rom: [
                 0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
                 0x11, 0x3E, 0x80, 0x32, 0xE2, 0x0C, 0x3E, 0xF3, 0xE2, 0x32, 0x3E, 0x77, 0x77, 0x3E, 0xFC, 0xE0,
@@ -56,7 +60,7 @@ impl Bus {
     }
 
     pub fn set_rom(&mut self, rom: Option<Box<dyn MbcController>>) {
-        self.rom = rom;
+        self.rom = rom
     }
 
     pub fn read(&self, dir: usize) -> u8 {
@@ -71,21 +75,17 @@ impl Bus {
             0x8000 ..= 0x9FFF => self.ppu.read_vram(dir),
             0xA000 ..= 0xBFFF => self.eram[dir - 0xA000],
             0xC000 ..= 0xDFFF => self.wram[dir - 0xC000],
-            0xE000 ..= 0xFDFF => {
-                if dir >= 0xFEA0 && dir <= 0xFEFF {
-                    return 0x00;
-                };
-                self.wram[dir - 0xE000]
-            },
+            0xE000 ..= 0xFDFF => self.wram[dir - 0xE000],
             0xFE00 ..= 0xFE9F => self.ppu.read_oam(dir),
             0xFEA0 ..= 0xFEFF => 0x00,
             0xFF00 ..= 0xFF7F => {
                 match dir {
                     0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40],
-                    _ => self.hram[dir - 0xFE00],
+                    _ => self.io_regs[dir - 0xFF00],
                 }
             }
-            0xFF80 ..= 0xFFFF => self.hram[dir - 0xFE00],
+            0xFF80 ..= 0xFFFE => self.hram[dir - 0xFF80],
+            0xFFFF => self.i_enable,
             _ => unreachable!()
         }
     }
@@ -102,21 +102,22 @@ impl Bus {
             0xFF00 ..= 0xFF7F => {
                 match dir {
                     0xFF00 => {
-                        let joyp = self.hram[0x100] & 0x0F;
-                        self.hram[0x100] = joyp | (val & 0xF0);
+                        let joyp = self.io_regs[0] & 0x0F;
+                        self.io_regs[0] = joyp | (val & 0xF0);
                     }
-                    0xFF04 => self.hram[dir - 0xFE00] = 0,
+                    0xFF04 => self.io_regs[dir - 0xFF00] = 0,
                     0xFF40 ..= 0xFF4B => self.ppu.regs[dir - 0xFF40] = val,
-                    _ => self.hram[dir - 0xFE00] = val,
+                    _ => self.io_regs[dir - 0xFF00] = val,
                 }
             }
-            0xFF80 ..= 0xFFFF => self.hram[dir - 0xFE00] = val,
+            0xFF80 ..= 0xFFFE => self.hram[dir - 0xFF80] = val,
+            0xFFFF => self.i_enable = val,
             _ => unreachable!()
         }
     }
 
     pub fn set_joyp(&mut self, val: u8) {
-        self.hram[0x100] = val;
+        self.io_regs[0] = val;
     }
 
     pub fn set_enable_boot_rom(mut self, enable_boot_rom: bool) -> Bus {
@@ -159,7 +160,7 @@ impl Bus {
     }
 
     pub fn reset_joyp(&mut self) {
-        self.hram[0x100] = 0xFF;
+        self.io_regs[0] = 0xFF;
     }
 
     pub fn increase_div(&mut self) {
@@ -195,7 +196,7 @@ impl Bus {
             Interrupts::VBlank => int_f |= 0b00000001,
             Interrupts::LcdStat => int_f |= 0b00000010,
             Interrupts::Timer => int_f |= 0b00000100,
-            //Interrupts::Serial => int_f |= 0b00001000,
+            Interrupts::Serial => int_f |= 0b00001000,
             Interrupts::Joypad => int_f |= 0b00010000,
         }
 
